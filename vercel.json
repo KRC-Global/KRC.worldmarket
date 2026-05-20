@@ -2,17 +2,20 @@
   "version": 2,
   "builds": [
     {
-      "src": "backend/app.py",
+      "src": "api/index.py",
       "use": "@vercel/python",
       "config": { "maxLambdaSize": "15mb" }
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "backend/app.py" },
-    { "handle": "filesystem" },
+    { "src": "/api/(.*)", "dest": "/api/index.py" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/admin.html", "dest": "/admin.html" },
+    { "src": "/analytics.html", "dest": "/analytics.html" },
     { "src": "/(.*)", "dest": "/index.html" }
   ],
   "env": {
-    "FLASK_ENV": "production"
+    "FLASK_ENV": "production",
+    "TRANSLATE_AFTER_COLLECT": "0"
   }
 }
