@@ -21,8 +21,13 @@ class Config:
         'pool_recycle': 300,
     }
 
-    # 관리자 KEY (X-Admin-Key 헤더)
+    # 관리자 KEY (X-Admin-Key 헤더 — 수집 스크립트 후방 호환)
     ADMIN_KEY = os.environ.get('ADMIN_KEY', 'change-this-in-production')
+
+    # Supabase
+    SUPABASE_URL        = os.environ.get('SUPABASE_URL', '')
+    SUPABASE_ANON_KEY   = os.environ.get('SUPABASE_ANON_KEY', '')
+    SUPABASE_JWT_SECRET = os.environ.get('SUPABASE_JWT_SECRET', '')
 
     # 수집기 API 키
     UNGM_API_KEY   = os.environ.get('UNGM_API_KEY', '')

@@ -1,28 +1,16 @@
 """
 KRC World Market — 관리자 API
-X-Admin-Key 헤더 또는 ?key= 쿼리 파라미터로 인증.
+Supabase JWT (Authorization: Bearer) 또는 X-Admin-Key 헤더로 인증.
 """
 import csv
 import io
 from datetime import datetime
-from functools import wraps
 from flask import Blueprint, request, jsonify, current_app, Response
 from sqlalchemy import func
 from models import db, BidNotice, ScrapingRun
+from auth import admin_required
 
 admin_bp = Blueprint('admin', __name__)
-
-
-def admin_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        key = (request.headers.get('X-Admin-Key')
-               or request.args.get('key', ''))
-        admin_key = current_app.config.get('ADMIN_KEY', '')
-        if not admin_key or key != admin_key:
-            return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-        return f(*args, **kwargs)
-    return decorated
 
 
 # ── 공고 목록 (관리자용 — 전체 상태 포함) ────────────────────────────────────

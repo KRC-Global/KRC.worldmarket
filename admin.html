@@ -538,13 +538,12 @@ tbody td:first-child { padding-left: 16px; }
 <!-- AUTH GATE -->
 <div id="auth-gate">
   <div class="auth-card">
-    <h2>🔐 관리자 인증</h2>
-    <p>관리자 키를 입력하여 접속하세요.<br>URL에 <code>?key=...</code> 파라미터로 자동 입력됩니다.</p>
-    <div class="auth-input-wrap">
-      <input type="password" id="key-input" placeholder="Admin Key" autocomplete="off">
-      <button id="btn-auth">접속</button>
-    </div>
-    <div id="auth-error">키가 올바르지 않습니다.</div>
+    <h2 id="auth-title">🔐 관리자 로그인</h2>
+    <p id="auth-desc">Google 계정으로 로그인하세요.<br>관리자 권한이 있는 계정만 접근 가능합니다.</p>
+    <button id="btn-google-login" style="display:flex;align-items:center;gap:8px;margin:0 auto;padding:10px 20px;border:1px solid #dadce0;border-radius:8px;background:#fff;cursor:pointer;font-size:15px;font-weight:500;color:#3c4043;">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Google로 계속하기
+    </button>
   </div>
 </div>
 
@@ -757,7 +756,6 @@ tbody td:first-child { padding-left: 16px; }
 
 <script>
 const API = '';  // same-origin
-let adminKey = '';
 let currentPage = 1;
 const PAGE_SIZE = 50;
 let totalCount = 0;
@@ -765,52 +763,26 @@ let selectedIds = new Set();
 let currentNotice = null;
 let editTags = [];
 
-// ── URL KEY PRE-FILL ──────────────────────────────────────────────────────────
-(function() {
-  const params = new URLSearchParams(location.search);
-  const k = params.get('key');
-  if (k) {
-    document.getElementById('key-input').value = k;
-    // Auto-auth
-    document.getElementById('key-input').dispatchEvent(new Event('tryauth'));
-  }
-})();
-
-// ── AUTH ──────────────────────────────────────────────────────────────────────
-async function tryAuth(key) {
-  try {
-    const r = await fetch(`${API}/api/admin/notices?perPage=1`, {
-      headers: { 'X-Admin-Key': key }
-    });
-    if (r.status === 401) return false;
-    if (!r.ok) return false;
-    return true;
-  } catch { return false; }
+// ── 인증 헤더 헬퍼 ────────────────────────────────────────────────────────────
+// Supabase JWT를 우선 사용하고, 없으면 X-Admin-Key(수집 스크립트용) 폴백
+async function authHeaders(extra = {}) {
+  const token = window._adminToken ? await window._adminToken() : null;
+  if (token) return { 'Authorization': `Bearer ${token}`, ...extra };
+  return extra;  // 토큰 없으면 빈 헤더 (401 반환됨)
 }
 
-document.getElementById('btn-auth').addEventListener('click', doAuth);
-document.getElementById('key-input').addEventListener('keydown', e => { if (e.key === 'Enter') doAuth(); });
-document.getElementById('key-input').addEventListener('tryauth', doAuth);
-
-async function doAuth() {
-  const key = document.getElementById('key-input').value.trim();
-  if (!key) return;
-  const ok = await tryAuth(key);
-  if (ok) {
-    adminKey = key;
-    document.getElementById('auth-gate').style.display = 'none';
-    document.getElementById('main').style.display = 'block';
-    loadStats();
-    loadNotices();
-  } else {
-    document.getElementById('auth-error').style.display = 'block';
-  }
+// ── 관리자 진입 ───────────────────────────────────────────────────────────────
+function enterAdmin() {
+  document.getElementById('auth-gate').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+  loadStats();
+  loadNotices();
 }
 
 // ── STATS ─────────────────────────────────────────────────────────────────────
 async function loadStats() {
   try {
-    const r = await fetch(`${API}/api/admin/stats`, { headers: { 'X-Admin-Key': adminKey } });
+    const r = await fetch(`${API}/api/admin/stats`, { headers: await authHeaders() });
     const d = await r.json();
     if (d.success) {
       const bs = d.by_status || {};
@@ -850,7 +822,7 @@ async function loadNotices(page = 1) {
   params.set('perPage', PAGE_SIZE);
 
   try {
-    const r = await fetch(`${API}/api/admin/notices?${params}`, { headers: { 'X-Admin-Key': adminKey } });
+    const r = await fetch(`${API}/api/admin/notices?${params}`, { headers: await authHeaders() });
     const d = await r.json();
     if (!d.success) throw new Error(d.error || 'Error');
     const notices = d.data || [];
@@ -998,7 +970,7 @@ async function bulkAction(action) {
   try {
     const r = await fetch(`${API}/api/admin/notices/bulk`, {
       method: 'POST',
-      headers: { 'X-Admin-Key': adminKey, 'Content-Type': 'application/json' },
+      headers: await authHeaders({'Content-Type': 'application/json'}),
       body: JSON.stringify({ action, ids })
     });
     const d = await r.json();
@@ -1029,7 +1001,7 @@ async function quickStatus(id, status) {
   try {
     const r = await fetch(`${API}/api/admin/notices/${id}`, {
       method: 'PATCH',
-      headers: { 'X-Admin-Key': adminKey, 'Content-Type': 'application/json' },
+      headers: await authHeaders({'Content-Type': 'application/json'}),
       body: JSON.stringify({ adminStatus: status })
     });
     const d = await r.json();
@@ -1053,7 +1025,7 @@ async function quickStatus(id, status) {
 async function openPanel(id) {
   // Fetch notice detail
   try {
-    const r = await fetch(`${API}/api/admin/notices/${id}`, { headers: { 'X-Admin-Key': adminKey } });
+    const r = await fetch(`${API}/api/admin/notices/${id}`, { headers: await authHeaders() });
     const d = await r.json();
     if (!d.success) return;
     currentNotice = d.data;
@@ -1068,7 +1040,7 @@ async function openPanel(id) {
 async function openPanelFromRow(row) {
   // Try dedicated endpoint first
   try {
-    const r = await fetch(`${API}/api/admin/notices/${row.id}`, { headers: { 'X-Admin-Key': adminKey } });
+    const r = await fetch(`${API}/api/admin/notices/${row.id}`, { headers: await authHeaders() });
     if (r.ok) {
       const d = await r.json();
       if (d.success) {
@@ -1185,7 +1157,7 @@ async function savePanelMeta() {
   try {
     const r = await fetch(`${API}/api/admin/notices/${currentNotice.id}`, {
       method: 'PATCH',
-      headers: { 'X-Admin-Key': adminKey, 'Content-Type': 'application/json' },
+      headers: await authHeaders({'Content-Type': 'application/json'}),
       body: JSON.stringify(payload)
     });
     const d = await r.json();
@@ -1234,7 +1206,7 @@ document.getElementById('collect-run').addEventListener('click', async () => {
   try {
     const r = await fetch(`${API}/api/admin/collect`, {
       method: 'POST',
-      headers: { 'X-Admin-Key': adminKey, 'Content-Type': 'application/json' },
+      headers: await authHeaders({'Content-Type': 'application/json'}),
       body: JSON.stringify(payload)
     });
     const d = await r.json();
@@ -1257,7 +1229,10 @@ document.getElementById('btn-export').addEventListener('click', () => {
   const source = document.getElementById('filter-source').value;
   if (status) params.set('adminStatus', status);
   if (source) params.set('source', source);
-  const url = `${API}/api/admin/notices/export?${params}&key=${encodeURIComponent(adminKey)}`;
+  // export는 GET 요청이라 Authorization 헤더 사용이 어려우므로 토큰을 query param으로 전달
+  const token = window._adminToken ? await window._adminToken() : null;
+  if (token) params.set('token', token);
+  const url = `${API}/api/admin/notices/export?${params}`;
   window.open(url, '_blank');
 });
 
@@ -1271,21 +1246,52 @@ function showToast(msg, type = '') {
   toastTimer = setTimeout(() => { el.className = ''; }, 3000);
 }
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
-// Auto-auth from URL param
-const _urlKey = new URLSearchParams(location.search).get('key');
-if (_urlKey) {
-  document.getElementById('key-input').value = _urlKey;
-  tryAuth(_urlKey).then(ok => {
-    if (ok) {
-      adminKey = _urlKey;
-      document.getElementById('auth-error').style.display = 'none';
-      document.getElementById('auth-gate').style.display = 'none';
-      document.getElementById('main').style.display = 'block';
-      loadStats();
-      loadNotices();
-    }
-  });
+
+</script>
+
+<!-- Supabase 인증 모듈 -->
+<script type="module">
+import { getSession, isAdmin, getAdminToken, signInWithGoogle, signOut } from '/assets/js/supabase-client.js';
+
+// Flask API 호출용 JWT 토큰 제공 (인라인 스크립트 브리지)
+window._adminToken = getAdminToken;
+
+// 관리자 로그아웃 버튼
+window._adminSignOut = async function() {
+  await signOut();
+};
+
+// 구글 로그인 버튼 이벤트
+document.getElementById('btn-google-login')?.addEventListener('click', signInWithGoogle);
+
+// 초기 인증 상태 확인
+const session = await getSession();
+
+if (!session) {
+  // 미로그인 → 로그인 버튼 표시 (기본값)
+} else if (!isAdmin(session)) {
+  // 로그인했으나 관리자 아님
+  document.getElementById('auth-title').textContent = '🚫 접근 권한 없음';
+  document.getElementById('auth-desc').textContent  = '관리자 권한이 있는 Google 계정이 필요합니다.';
+  document.getElementById('btn-google-login').style.display = 'none';
+} else {
+  // 관리자 — 바로 진입
+  enterAdmin();
+
+  // 헤더에 유저 정보 + 로그아웃 추가
+  const header = document.querySelector('.admin-header');
+  const user = session.user;
+  const avatarUrl = user.user_metadata?.avatar_url || '';
+  const name = user.user_metadata?.full_name || user.email || '';
+  const pill = document.createElement('div');
+  pill.style.cssText = 'display:flex;align-items:center;gap:8px;';
+  pill.innerHTML = `
+    ${avatarUrl ? `<img src="${avatarUrl}" style="width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.4);" alt="">` : ''}
+    <span style="font-size:13px;color:#fff;">${name}</span>
+    <a href="/analytics.html" class="header-btn">애널리틱스</a>
+    <button class="header-btn" onclick="window._adminSignOut()">로그아웃</button>
+  `;
+  header.appendChild(pill);
 }
 </script>
 </body>

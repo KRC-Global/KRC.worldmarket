@@ -34,9 +34,16 @@ from models import db
 db.init_app(app)
 
 _tables_created = False
+_IS_PRODUCTION = os.environ.get('FLASK_ENV') == 'production'
+
 
 @app.before_request
 def ensure_tables():
+    """개발 환경에서만 자동 테이블 생성.
+    프로덕션(Vercel)에서는 scripts/init_db.py 를 한 번 실행해 DB를 초기화한다.
+    """
+    if _IS_PRODUCTION:
+        return
     global _tables_created
     if not _tables_created:
         db.create_all()
