@@ -26,7 +26,7 @@ app.config.from_object(config[config_name])
 # CORS — 공개 API는 전체 허용, 관리자 API는 admin_api.py에서 별도 제한
 CORS(app,
      resources={r"/api/*": {"origins": app.config.get('CORS_ORIGINS', '*')}},
-     allow_headers=["Content-Type", "X-Admin-Key"],
+     allow_headers=["Content-Type", "X-Admin-Key", "Authorization"],
      methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"])
 
 # DB 초기화
@@ -69,6 +69,10 @@ def _run_migrations():
         "ALTER TABLE bid_notices ADD COLUMN admin_note TEXT",
         "ALTER TABLE bid_notices ADD COLUMN assigned_to VARCHAR(100)",
         "ALTER TABLE bid_notices ADD COLUMN updated_at DATETIME",
+        "ALTER TABLE bid_notices ADD COLUMN project_name_ko TEXT",
+        "ALTER TABLE bid_notices ADD COLUMN notice_text TEXT",
+        "ALTER TABLE bid_notices ADD COLUMN notice_text_ko TEXT",
+        "ALTER TABLE bid_notices ADD COLUMN translated_at DATETIME",
         "ALTER TABLE scraping_runs ADD COLUMN total_updated INTEGER DEFAULT 0",
         "ALTER TABLE scraping_runs ADD COLUMN error TEXT",
     ]
@@ -85,10 +89,12 @@ def _run_migrations():
 from routes.public_api import public_bp
 from routes.admin_api  import admin_bp
 from routes.collector  import collector_bp
+from routes.user_api   import user_bp
 
 app.register_blueprint(public_bp,    url_prefix='/api')
 app.register_blueprint(admin_bp,     url_prefix='/api/admin')
 app.register_blueprint(collector_bp, url_prefix='/api/admin')
+app.register_blueprint(user_bp,      url_prefix='/api/user')
 
 
 # 정적 파일 서빙 (index.html, admin.html)
@@ -99,6 +105,10 @@ def index():
 @app.route('/admin.html')
 def admin():
     return send_from_directory('..', 'admin.html')
+
+@app.route('/analytics.html')
+def analytics():
+    return send_from_directory('..', 'analytics.html')
 
 
 @app.errorhandler(404)

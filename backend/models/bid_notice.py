@@ -32,8 +32,14 @@ class BidNotice(db.Model):
     procurement_category = db.Column(db.String(100), index=True)            # Consultant Services 등
 
     # 프로젝트 정보 (원천 공개 정보)
-    project_id   = db.Column(db.String(100), index=True)
-    project_name = db.Column(db.Text)
+    project_id      = db.Column(db.String(100), index=True)
+    project_name    = db.Column(db.Text)
+    project_name_ko = db.Column(db.Text)                                    # 한글 프로젝트명
+
+    # 본문 발췌·한글 요약
+    notice_text     = db.Column(db.Text)                                    # 원문 본문/scope 발췌
+    notice_text_ko  = db.Column(db.Text)                                    # 한글 번역/요약
+    translated_at   = db.Column(db.DateTime)                                # 번역 시각
 
     # 일정·금액
     posted_date      = db.Column(db.Date, index=True)
@@ -95,6 +101,9 @@ class BidNotice(db.Model):
             'procurementCategory':  self.procurement_category,
             'projectId':            self.project_id,
             'projectName':          self.project_name,
+            'projectNameKo':        self.project_name_ko,
+            'noticeText':           self.notice_text,
+            'noticeTextKo':         self.notice_text_ko,
             'postedDate':           str(self.posted_date) if self.posted_date else None,
             'deadlineDate':         str(self.deadline_date) if self.deadline_date else None,
             'daysLeft':             days_left,

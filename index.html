@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KRC World Market | 한국농어촌공사 해외발주공고</title>
-    <meta name="description" content="한국농어촌공사(KRC)가 수집한 MDB 해외발주공고를 탐색하세요. World Bank, ADB, AfDB, AIIB, IsDB, KOICA, EDCF 공고를 한 곳에서.">
+    <title>KRC World Market | 농업분야 해외발주공고</title>
+    <meta name="description" content="한국농어촌공사(KRC)가 수집한 농업분야 해외발주공고를 한 곳에서. World Bank, ADB, AfDB, AIIB, IsDB, KOICA, EDCF 발주공고 중 농업·수자원·관개·기후복원력 관련 공고를 큐레이션해 제공합니다.">
 
     <link rel="stylesheet" href="/assets/css/variables.css">
     <link rel="stylesheet" href="/assets/css/base.css">
@@ -41,20 +41,7 @@
             padding: 16px 20px 32px;
         }
 
-        /* ── 통계 배너 ── */
-        .stats-banner {
-            display: flex; gap: 12px; flex-wrap: wrap;
-            margin-bottom: 14px;
-        }
-        .stat-chip {
-            background: var(--color-neutral-0, #fff);
-            border: 1px solid var(--color-neutral-200, #e5e7eb);
-            border-radius: 8px; padding: 10px 16px;
-            font-size: 13px; display: flex; align-items: center; gap: 6px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-        }
-        .stat-chip b { font-size: 17px; color: var(--color-primary-600, #1A4B7C); }
-        .stat-chip.urgent b { color: #d97706; }
+        /* 통계 배너/카드/뱃지/태그칩/페이지네이션은 components.css의 컴포넌트 패밀리 사용 */
 
         /* ── 필터 바 ── */
         .filter-bar {
@@ -208,63 +195,13 @@
         .panel-close:hover { color: var(--color-neutral-900, #111); }
         .panel-body { flex: 1; overflow-y: auto; padding: 12px; }
 
-        /* 사이드패널 카드 */
-        .panel-card {
-            background: var(--color-neutral-0, #fff);
-            border: 1px solid var(--color-neutral-200, #e5e7eb);
-            border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;
-            cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
-        }
-        .panel-card:hover { border-color: var(--color-primary-300, #6ba5d4); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-        .panel-card-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
-        .panel-card-title { font-size: 13px; font-weight: 600; color: var(--color-neutral-900, #111); margin: 0 0 4px; line-height: 1.4; }
-        .panel-card:hover .panel-card-title { color: var(--color-primary-600, #1A4B7C); }
-        .panel-card-foot { display: flex; gap: 12px; font-size: 11px; color: var(--color-neutral-600, #6b7280); flex-wrap: wrap; }
-
-        /* 리스트 뷰 */
+        /* 리스트 뷰 컨테이너만 유지 (카드/뱃지는 components.css) */
         .notice-list-container { display: none; }
         .notice-list-container.active { display: block; }
-
-        .list-card {
-            background: var(--color-neutral-0, #fff);
-            border: 1px solid var(--color-neutral-200, #e5e7eb);
-            border-radius: 8px; padding: 14px 16px; margin-bottom: 8px;
-            cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
-        }
-        .list-card:hover { border-color: var(--color-primary-300, #6ba5d4); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-        .list-card-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
-        .list-card-title { font-size: 14px; font-weight: 600; color: var(--color-neutral-900, #111); margin: 0 0 4px; line-height: 1.45; }
-        .list-card:hover .list-card-title { color: var(--color-primary-600, #1A4B7C); }
-        .list-card-original { font-size: 12px; color: var(--color-neutral-500, #9ca3af); margin: 0 0 6px; line-height: 1.35; }
-        .list-card-foot { display: flex; gap: 14px; font-size: 12px; color: var(--color-neutral-600, #6b7280); flex-wrap: wrap; }
-        .list-card-foot .lbl { color: var(--color-neutral-500, #9ca3af); margin-right: 3px; }
-
-        /* 소스 배지 */
-        .source-badge {
-            display: inline-block; padding: 3px 9px; border-radius: 12px;
-            font-size: 11px; font-weight: 700;
-            background: #E8F1F8; color: #1A4B7C; border: 1px solid #B8D1E8; white-space: nowrap;
-        }
-
-        /* D-day 배지 */
-        .dday-badge {
-            display: inline-block; padding: 2px 8px; border-radius: 10px;
-            font-size: 11px; font-weight: 700; white-space: nowrap;
-        }
-        .dday-badge.urgent { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
-        .dday-badge.open { background: #D1FAE5; color: #065F46; border: 1px solid #A7F3D0; }
-        .dday-badge.closed { background: #F3F4F6; color: #6B7280; border: 1px solid #E5E7EB; }
-
-        /* KRC 태그 */
-        .krc-tag {
-            display: inline-block; padding: 2px 8px; border-radius: 10px;
-            font-size: 11px; font-weight: 600;
-            background: #F0FDF4; color: #166534; border: 1px solid #BBF7D0;
-        }
-        .relevance-badge {
-            display: inline-block; padding: 2px 7px; border-radius: 10px;
-            font-size: 11px; font-weight: 700;
-            background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;
+        .notice-list-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 12px;
         }
 
         /* 모달 */
@@ -304,27 +241,12 @@
             width: 110px; vertical-align: top; white-space: nowrap;
         }
 
-        /* 페이지네이션 */
+        /* 페이지네이션은 components.css의 .pagination + .page-btn 사용
+           빈 상태는 components.css의 .empty-state 사용 */
         .pagination-bar {
             display: flex; justify-content: center; align-items: center;
-            gap: 8px; padding: 16px 0 0;
+            gap: 6px; margin-top: 16px;
         }
-        .page-btn {
-            padding: 6px 12px; border-radius: 6px; border: 1px solid #d1d5db;
-            background: #fff; font-size: 13px; cursor: pointer;
-        }
-        .page-btn.active { background: var(--color-primary-600, #1A4B7C); color: #fff; border-color: var(--color-primary-600, #1A4B7C); }
-        .page-btn:hover:not(.active) { background: #f3f4f6; }
-        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-        /* 빈 상태 */
-        .empty-state {
-            text-align: center; padding: 60px 20px;
-            color: var(--color-neutral-500, #9ca3af);
-        }
-        .empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
-        .empty-state .empty-text { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-        .empty-state .empty-sub { font-size: 13px; }
 
         /* 반응형 */
         @media (max-width: 768px) {
@@ -334,7 +256,7 @@
             .platform-nav .nav-link { padding: 5px 8px; font-size: 12px; }
             .platform-main { padding: 12px 12px 24px; }
             .stats-banner { gap: 8px; }
-            .stat-chip { padding: 8px 12px; font-size: 12px; }
+            .stat-pill { padding: 10px 12px; }
             .filter-bar input[type="text"] { min-width: 0; }
             .notice-map-container { min-height: 300px; height: calc(100vh - 180px); }
             .notice-side-panel { width: 100%; }
@@ -349,6 +271,14 @@
             .detail-table td { border: none; padding: 2px 0; }
             .detail-table .label { background: transparent; font-size: 12px; color: var(--color-neutral-500, #9ca3af); width: auto; padding: 0; }
         }
+
+        /* 북마크 버튼 */
+        .bookmark-btn {
+            background: none; border: none; cursor: pointer;
+            font-size: 16px; color: var(--color-neutral-400, #9ca3af);
+            padding: 2px 4px; line-height: 1; transition: color 150ms;
+        }
+        .bookmark-btn:hover, .bookmark-btn.bookmarked { color: #f59e0b; }
     </style>
 </head>
 
@@ -357,13 +287,13 @@
     <!-- 탑바 -->
     <header class="platform-header">
         <a class="platform-brand" href="/">
-            <span class="brand-icon">🌐</span>
+            <span class="brand-icon">🌾</span>
             <div>
                 <div class="brand-title">KRC World Market</div>
-                <div class="brand-sub">한국농어촌공사 해외발주공고 탐색</div>
+                <div class="brand-sub">한국농어촌공사 해외 농업분야 발주공고</div>
             </div>
         </a>
-        <nav class="platform-nav">
+        <nav class="platform-nav" id="mainNav">
             <a href="/" class="nav-link active">공고 탐색</a>
             <a href="#about-section" class="nav-link">소개</a>
         </nav>
@@ -374,20 +304,39 @@
 
         <!-- 통계 배너 -->
         <div class="stats-banner" id="statsBanner" style="display:none;">
-            <div class="stat-chip">
-                총 <b id="statTotal">0</b>건 공고
+            <div class="stat-pill">
+                <div class="stat-pill__icon">🌾</div>
+                <div class="stat-pill__body">
+                    <div class="stat-pill__value" id="statTotal">0</div>
+                    <div class="stat-pill__label">농업분야 공고</div>
+                </div>
             </div>
-            <div class="stat-chip urgent">
-                마감임박 <b id="statUrgent">0</b>건
+            <div class="stat-pill">
+                <div class="stat-pill__icon stat-pill__icon--urgent">⏰</div>
+                <div class="stat-pill__body">
+                    <div class="stat-pill__value" id="statUrgent">0</div>
+                    <div class="stat-pill__label">마감 7일 이내</div>
+                </div>
             </div>
-            <div class="stat-chip" id="statLastCollect" style="display:none;">
-                최근 수집: <b id="statLastCollectTime">-</b>
+            <div class="stat-pill">
+                <div class="stat-pill__icon stat-pill__icon--source">🌏</div>
+                <div class="stat-pill__body">
+                    <div class="stat-pill__value" id="statSourceCount">0</div>
+                    <div class="stat-pill__label">수집 기관</div>
+                </div>
+            </div>
+            <div class="stat-pill" id="statLastCollect" style="display:none;">
+                <div class="stat-pill__icon">📥</div>
+                <div class="stat-pill__body">
+                    <div class="stat-pill__value" id="statLastCollectTime" style="font-size:var(--font-size-base);">-</div>
+                    <div class="stat-pill__label">최근 수집</div>
+                </div>
             </div>
         </div>
 
         <!-- 필터 바 -->
         <div class="filter-bar">
-            <input type="text" id="searchInput" placeholder="공고명, 국가, 분야 검색..." onkeydown="if(event.key==='Enter')applyFilter()">
+            <input type="text" id="searchInput" placeholder="공고명·국가·프로젝트 검색..." onkeydown="if(event.key==='Enter')applyFilter()">
             <select id="sourceSelect" onchange="applyFilter()">
                 <option value="">전체 기관</option>
                 <option value="worldbank">World Bank</option>
@@ -397,7 +346,6 @@
                 <option value="isdb">IsDB</option>
                 <option value="koica">KOICA</option>
                 <option value="edcf">EDCF</option>
-                <option value="ungm">UNGM</option>
             </select>
             <select id="sortSelect" onchange="applyFilter()">
                 <option value="relevance">관련성순</option>
@@ -407,6 +355,16 @@
             </select>
             <button class="filter-btn filter-btn-primary" onclick="applyFilter()">🔍 검색</button>
             <button class="filter-btn filter-btn-secondary" onclick="resetFilter()">초기화</button>
+        </div>
+
+        <!-- KRC 태그 칩 -->
+        <div class="tag-chip-row" id="tagChipRow" style="margin-bottom:14px;">
+            <span style="font-size:12px; color:var(--color-neutral-500); font-weight:600; margin-right:4px;">분류:</span>
+            <button class="tag-chip" data-tag="농업" onclick="toggleTagChip(this)">🌾 농업</button>
+            <button class="tag-chip" data-tag="수자원" onclick="toggleTagChip(this)">💧 수자원</button>
+            <button class="tag-chip" data-tag="기후복원력" onclick="toggleTagChip(this)">🌡️ 기후복원력</button>
+            <button class="tag-chip" data-tag="인프라" onclick="toggleTagChip(this)">🏗️ 인프라</button>
+            <button class="tag-chip" data-tag="컨설팅" onclick="toggleTagChip(this)">📊 컨설팅</button>
         </div>
 
         <!-- 뷰 탭 -->
@@ -452,24 +410,30 @@
 
         <!-- 소개 섹션 -->
         <section id="about-section" style="margin-top:48px; padding:32px 24px; background:#fff; border-radius:12px; border:1px solid #e5e7eb;">
-            <h2 style="font-size:18px; font-weight:700; color:#1A4B7C; margin:0 0 12px;">KRC World Market 소개</h2>
-            <p style="font-size:14px; color:#374151; line-height:1.7; margin:0 0 12px;">
-                한국농어촌공사(KRC)가 운영하는 해외발주공고 탐색 플랫폼입니다.
-                World Bank, ADB, AfDB, AIIB, IsDB, KOICA, EDCF 등 주요 국제개발은행 및 공적개발원조 기관의
-                농업·수자원·인프라·컨설팅 분야 발주공고를 매일 자동 수집하여 제공합니다.
+            <h2 class="section-heading" style="font-size:18px;">KRC World Market 소개</h2>
+            <p style="font-size:14px; color:var(--color-neutral-700); line-height:1.7; margin:0 0 16px;">
+                한국농어촌공사(KRC)의 해외사업 발굴을 위한 <strong>농업분야 발주공고 큐레이션 플랫폼</strong>입니다.
+                World Bank, ADB, AfDB, AIIB, IsDB, KOICA, EDCF 의 발주공고를 자동 수집한 뒤,
+                <strong>농업·수자원·관개·기후복원력</strong> 키워드로 자동 분류된 공고만 노출합니다.
             </p>
             <div style="display:flex; gap:12px; flex-wrap:wrap;">
-                <div style="flex:1; min-width:200px; padding:14px; background:#F0F9FF; border-radius:8px; border:1px solid #BAE6FD;">
-                    <div style="font-weight:700; color:#0369A1; margin-bottom:4px;">🌏 수집 기관</div>
-                    <div style="font-size:13px; color:#374151;">WB · ADB · AfDB · AIIB · IsDB · KOICA · EDCF · UNGM</div>
+                <div style="flex:1; min-width:220px; padding:16px; background:var(--color-accent-50); border-radius:10px; border:1px solid var(--color-accent-100);">
+                    <div style="font-weight:700; color:var(--color-accent-700); margin-bottom:6px;">🌾 KRC 관심 분야</div>
+                    <div style="font-size:13px; color:var(--color-neutral-700); line-height:1.6;">
+                        농업 · 관개·배수 · 수자원개발 · 기후복원력 · 농촌개발 · 농업기술용역
+                    </div>
                 </div>
-                <div style="flex:1; min-width:200px; padding:14px; background:#F0FDF4; border-radius:8px; border:1px solid #BBF7D0;">
-                    <div style="font-weight:700; color:#166534; margin-bottom:4px;">🌱 KRC 관심 분야</div>
-                    <div style="font-size:13px; color:#374151;">농업 · 수자원 · 관개배수 · 기후복원력 · 기술용역</div>
+                <div style="flex:1; min-width:220px; padding:16px; background:var(--color-primary-50); border-radius:10px; border:1px solid var(--color-primary-100);">
+                    <div style="font-weight:700; color:var(--color-primary-700); margin-bottom:6px;">🌏 수집 기관 (7개)</div>
+                    <div style="font-size:13px; color:var(--color-neutral-700); line-height:1.6;">
+                        World Bank · ADB · AfDB · AIIB · IsDB · KOICA · EDCF
+                    </div>
                 </div>
-                <div style="flex:1; min-width:200px; padding:14px; background:#FFF7ED; border-radius:8px; border:1px solid #FED7AA;">
-                    <div style="font-weight:700; color:#C2410C; margin-bottom:4px;">📋 공개 범위</div>
-                    <div style="font-size:13px; color:#374151;">외부 발주공고 메타데이터만 제공 (원문 링크 포함)</div>
+                <div style="flex:1; min-width:220px; padding:16px; background:var(--color-secondary-200); border-radius:10px; border:1px solid var(--color-secondary-300);">
+                    <div style="font-weight:700; color:var(--color-secondary-900); margin-bottom:6px;">📋 공개 범위</div>
+                    <div style="font-size:13px; color:var(--color-neutral-700); line-height:1.6;">
+                        외부 발주공고 메타데이터 + 원문 링크
+                    </div>
                 </div>
             </div>
         </section>
@@ -489,6 +453,12 @@
                     <span id="detailRelevance"></span>
                     <span id="detailTags"></span>
                 </div>
+                <!-- 한글 본문 요약 박스 -->
+                <div id="detailNoticeTextKo" style="display:none; margin-bottom:16px; padding:14px 16px; background:var(--color-accent-50); border-left:4px solid var(--color-accent-500); border-radius:8px;">
+                    <div style="font-weight:700; color:var(--color-accent-700); font-size:13px; margin-bottom:6px;">📝 한글 요약</div>
+                    <div id="detailNoticeTextKoBody" style="font-size:14px; color:var(--color-neutral-800); line-height:1.7; white-space:pre-wrap;"></div>
+                </div>
+
                 <table class="detail-table">
                     <tr><td class="label">기관</td><td id="detailSource"></td></tr>
                     <tr><td class="label">국가</td><td id="detailCountry"></td></tr>
@@ -502,7 +472,7 @@
                     <tr><td class="label">마감일</td><td id="detailDeadline"></td></tr>
                     <tr class="wb-detail-row" hidden><td class="label">Scope</td><td id="detailScope"></td></tr>
                     <tr class="wb-detail-row" hidden><td class="label">조달방식</td><td id="detailProcMethod"></td></tr>
-                    <tr class="wb-detail-row" hidden><td class="label">본문 발췌</td>
+                    <tr class="wb-detail-row" hidden><td class="label">본문 (원문)</td>
                         <td id="detailExcerpt" style="white-space:pre-wrap; font-size:12px; color:#555; max-height:200px; overflow-y:auto;"></td>
                     </tr>
                     <tr>
@@ -632,17 +602,82 @@
         return s.replace(/T.+/, '').replace(/-/g, '-');
     }
 
+    // ── 뱃지 / 태그 헬퍼 (components.css의 .badge 패밀리) ──
     function ddayBadge(notice) {
         const d = notice.daysLeft;
         if (d === null || d === undefined) return '';
-        if (d < 0) return `<span class="dday-badge closed">마감</span>`;
-        if (d <= 7) return `<span class="dday-badge urgent">D-${d}</span>`;
-        return `<span class="dday-badge open">D-${d}</span>`;
+        if (d < 0)  return `<span class="badge badge--dday badge--dday-closed">마감</span>`;
+        if (d <= 7) return `<span class="badge badge--dday badge--dday-urgent">D-${d}</span>`;
+        return `<span class="badge badge--dday badge--dday-open">D-${d}</span>`;
     }
 
-    function krcTagsHtml(tags) {
+    function sourceBadge(source) {
+        return `<span class="badge badge--source">${SOURCE_LABELS[source]||source}</span>`;
+    }
+
+    const TAG_VARIANT = {
+        '농업':'agri', '수자원':'water', '기후복원력':'climate',
+        '인프라':'infra', '컨설팅':'consulting',
+    };
+    function tagBadges(tags, limit) {
         if (!tags || !tags.length) return '';
-        return tags.map(t => `<span class="krc-tag">${escapeHtml(t)}</span>`).join(' ');
+        const list = limit ? tags.slice(0, limit) : tags;
+        return list.map(t => {
+            const v = TAG_VARIANT[t] || 'infra';
+            return `<span class="badge badge--tag badge--tag-${v}">${escapeHtml(t)}</span>`;
+        }).join(' ');
+    }
+
+    function relevanceBadge(score) {
+        if (!score || score < 60) return '';
+        return `<span class="badge badge--relevance">KRC ★ ${score}</span>`;
+    }
+
+    // 카드 헤더 아이콘 — krc_tags 우선순위
+    function cardIcon(tags) {
+        const t = tags || [];
+        if (t.includes('농업')) return '🌾';
+        if (t.includes('수자원')) return '💧';
+        if (t.includes('기후복원력')) return '🌡️';
+        if (t.includes('컨설팅')) return '📊';
+        if (t.includes('인프라')) return '🏗️';
+        return '🌱';
+    }
+
+    // ── 단일 NoticeCard 렌더 — 지도 패널/리스트 공용 ──
+    function renderNoticeCard(n, variant /* 'compact'|'list' */) {
+        const iso = COUNTRY_ISO[normalizeCountry(n.country||'')] || COUNTRY_ISO[n.country||''] || '';
+        const flag = iso
+            ? `<img src="/assets/images/flags/${iso}.svg" style="width:14px;height:14px;border-radius:50%;vertical-align:-2px;" onerror="this.outerHTML='🌍'"> `
+            : '';
+        const amt = n.amountValue
+            ? `${escapeHtml(n.amountCurrency||'')} ${(n.amountValue/1e6).toFixed(1)}M`
+            : (n.contractValue ? escapeHtml(n.contractValue) : '');
+        const isBookmarked = window._userBookmarks?.has(n.id) ?? false;
+        const showOriginal = n.titleKo && n.titleKo !== n.title;
+        const tagLimit = variant === 'compact' ? 2 : 4;
+
+        return `<div class="notice-card notice-card--${variant}" onclick='openDetail(${JSON.stringify(n).replace(/'/g,"&#39;")})'>
+            <div class="notice-card__icon">${cardIcon(n.krcTags)}</div>
+            <div class="notice-card__badges">
+                ${sourceBadge(n.source)}
+                ${ddayBadge(n)}
+                ${relevanceBadge(n.relevanceScore)}
+                ${tagBadges(n.krcTags, tagLimit)}
+                ${variant === 'list' ? `<button class="bookmark-btn${isBookmarked?' bookmarked':''}" data-nid="${n.id}"
+                    onclick="event.stopPropagation();_handleBookmark(${n.id},this)"
+                    title="${isBookmarked?'북마크 해제':'북마크 추가'}" style="margin-left:auto;">${isBookmarked?'★':'☆'}</button>` : ''}
+            </div>
+            <h4 class="notice-card__title">${escapeHtml(n.titleKo || n.title)}</h4>
+            ${showOriginal ? `<div class="notice-card__title-ko">${escapeHtml(n.title)}</div>` : ''}
+            <div class="notice-card__meta">
+                ${n.country ? `<span class="notice-card__meta-item">${flag}${escapeHtml(n.country)}</span>` : ''}
+                ${amt ? `<span class="notice-card__meta-item"><span class="notice-card__meta-label">규모</span><span class="notice-card__meta-value">${amt}</span></span>` : ''}
+                ${n.deadlineDate ? `<span class="notice-card__meta-item"><span class="notice-card__meta-label">마감</span><span class="notice-card__meta-value">${escapeHtml(n.deadlineDate)}</span></span>` : ''}
+                ${n.postedDate && variant === 'list' ? `<span class="notice-card__meta-item"><span class="notice-card__meta-label">게시</span><span class="notice-card__meta-value">${escapeHtml(n.postedDate)}</span></span>` : ''}
+                ${n.sourceUrl ? `<a href="${escapeHtml(n.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--color-accent-700);font-weight:600;text-decoration:none;margin-left:auto;">↗ 원문</a>` : ''}
+            </div>
+        </div>`;
     }
 
     // ── 상태 ──
@@ -652,9 +687,19 @@
     let filteredNotices = [];
     let groupedByCountry = {};
     let activeSources = new Set();
+    let activeTags = new Set();
     let currentView = 'map';
     let currentPage = 1;
     const PAGE_SIZE = 50;
+
+    // ── 태그 칩 토글 ──
+    function toggleTagChip(el) {
+        const tag = el.dataset.tag;
+        if (activeTags.has(tag)) { activeTags.delete(tag); el.classList.remove('active'); }
+        else { activeTags.add(tag); el.classList.add('active'); }
+        currentPage = 1;
+        loadAllNotices();
+    }
 
     // ── 초기화 ──
     document.addEventListener('DOMContentLoaded', () => {
@@ -676,6 +721,8 @@
 
             document.getElementById('statTotal').textContent = data.total || 0;
             document.getElementById('statUrgent').textContent = data.urgent || 0;
+            const srcCount = data.by_source ? Object.keys(data.by_source).length : 0;
+            document.getElementById('statSourceCount').textContent = srcCount;
             document.getElementById('statsBanner').style.display = 'flex';
 
             if (data.last_collected) {
@@ -718,6 +765,7 @@
         const sort = document.getElementById('sortSelect').value;
         if (search) p.set('search', search);
         if (source) p.set('source', source);
+        if (activeTags.size) p.set('tags', [...activeTags].join(','));
         p.set('sort', sort);
         return p;
     }
@@ -725,6 +773,11 @@
     function applyFilter() {
         currentPage = 1;
         loadAllNotices();
+        const q = (document.getElementById('searchInput')?.value || '').trim();
+        const src = document.getElementById('sourceSelect')?.value || '';
+        if (q || src) {
+            window._krcTrackSearch?.(q, src, filteredNotices.length);
+        }
     }
 
     function resetFilter() {
@@ -732,6 +785,8 @@
         document.getElementById('sourceSelect').value = '';
         document.getElementById('sortSelect').value = 'relevance';
         activeSources = new Set();
+        activeTags = new Set();
+        document.querySelectorAll('.tag-chip.active').forEach(el => el.classList.remove('active'));
         currentPage = 1;
         loadAllNotices();
     }
@@ -856,24 +911,9 @@
             ? `<img src="/assets/images/flags/${iso}.svg" style="width:22px;height:22px;border-radius:50%;vertical-align:middle;" onerror="this.outerHTML='🌍'">`
             : '🌍';
 
-        document.getElementById('panelNoticeList').innerHTML = notices.map(n => `
-            <div class="panel-card" onclick='openDetail(${JSON.stringify(n).replace(/'/g,"&#39;")})'>
-                <div class="panel-card-head">
-                    <span class="source-badge">${SOURCE_LABELS[n.source]||n.source}</span>
-                    ${ddayBadge(n)}
-                    <span style="margin-left:auto;font-size:11px;color:var(--color-neutral-500,#9ca3af);">
-                        ${n.deadlineDate ? '📅 '+escapeHtml(n.deadlineDate) : ''}
-                    </span>
-                </div>
-                <div class="panel-card-title">${escapeHtml(n.titleKo||n.title)}</div>
-                ${n.titleKo&&n.titleKo!==n.title ? `<div style="font-size:11px;color:var(--color-neutral-500,#9ca3af);margin-bottom:4px;">${escapeHtml(n.title)}</div>` : ''}
-                <div class="panel-card-foot">
-                    ${n.amountValue ? `<span>${escapeHtml(n.amountCurrency||'')} ${n.amountValue.toLocaleString()}</span>` : (n.contractValue ? `<span>${escapeHtml(n.contractValue)}</span>` : '')}
-                    ${(n.krcTags||[]).length ? krcTagsHtml((n.krcTags||[]).slice(0,2)) : ''}
-                    ${n.sourceUrl ? `<a href="${escapeHtml(n.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--color-primary-600,#1A4B7C);font-weight:600;text-decoration:none;margin-left:auto;">↗ 원문</a>` : ''}
-                </div>
-            </div>
-        `).join('');
+        document.getElementById('panelNoticeList').innerHTML = notices
+            .map(n => renderNoticeCard(n, 'compact'))
+            .join('');
 
         panel.classList.add('open');
     }
@@ -907,39 +947,17 @@
 
         if (!filteredNotices.length) {
             container.innerHTML = `<div class="empty-state">
-                <div class="empty-icon">📭</div>
-                <div class="empty-text">공고가 없습니다</div>
-                <div class="empty-sub">필터를 변경해 보세요</div>
+                <div class="empty-state__icon">🌱</div>
+                <div class="empty-state__title">조건에 맞는 공고가 없습니다</div>
+                <div class="empty-state__message">검색어를 줄이거나 필터/태그를 해제해 보세요. 농업분야 공고만 노출됩니다.</div>
             </div>`;
             document.getElementById('paginationBar').innerHTML = '';
             return;
         }
 
-        container.innerHTML = pageItems.map(n => {
-            const iso = COUNTRY_ISO[normalizeCountry(n.country||'')] || COUNTRY_ISO[n.country||''] || '';
-            const flagHtml = iso ? `<img src="/assets/images/flags/${iso}.svg" style="width:14px;height:14px;border-radius:50%;vertical-align:-2px;" onerror="this.outerHTML='🌍'"> ` : '';
-            const amtStr = n.amountValue ? `${n.amountCurrency||''} ${(n.amountValue/1e6).toFixed(1)}M` : (n.contractValue||'');
-
-            return `<div class="list-card" onclick='openDetail(${JSON.stringify(n).replace(/'/g,"&#39;")})'>
-                <div class="list-card-head">
-                    <span class="source-badge">${SOURCE_LABELS[n.source]||n.source}</span>
-                    ${ddayBadge(n)}
-                    ${n.relevanceScore>=60 ? `<span class="relevance-badge">KRC★ ${n.relevanceScore}</span>` : ''}
-                    <span style="margin-left:auto;font-size:11px;color:var(--color-neutral-500,#9ca3af);">
-                        ${n.deadlineDate ? '📅 '+escapeHtml(n.deadlineDate) : ''}
-                    </span>
-                </div>
-                <div class="list-card-title">${escapeHtml(n.titleKo||n.title)}</div>
-                ${n.titleKo&&n.titleKo!==n.title ? `<div class="list-card-original">${escapeHtml(n.title)}</div>` : ''}
-                ${(n.krcTags||[]).length ? `<div style="margin:4px 0;">${krcTagsHtml(n.krcTags)}</div>` : ''}
-                <div class="list-card-foot">
-                    ${n.country ? `<span>${flagHtml}${escapeHtml(n.country)}</span>` : ''}
-                    ${amtStr ? `<span><span class="lbl">규모</span>${escapeHtml(amtStr)}</span>` : ''}
-                    ${n.postedDate ? `<span><span class="lbl">게시</span>${escapeHtml(n.postedDate)}</span>` : ''}
-                    ${n.sourceUrl ? `<a href="${escapeHtml(n.sourceUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--color-primary-600,#1A4B7C);font-weight:600;text-decoration:none;margin-left:auto;">↗ 원문</a>` : ''}
-                </div>
-            </div>`;
-        }).join('');
+        container.innerHTML = `<div class="notice-list-grid">${
+            pageItems.map(n => renderNoticeCard(n, 'list')).join('')
+        }</div>`;
 
         renderPagination();
     }
@@ -970,6 +988,9 @@
 
     // ── 상세 모달 ──
     function openDetail(notice) {
+        // 공고 뷰 추적
+        window._krcTrackNoticeView?.(notice.id, currentView || 'list');
+
         // 제목
         document.getElementById('detailTitle').textContent = notice.titleKo || notice.title;
 
@@ -977,19 +998,33 @@
         const relEl = document.getElementById('detailRelevance');
         const tagsEl = document.getElementById('detailTags');
         if (notice.relevanceScore >= 20) {
-            relEl.innerHTML = `<span class="relevance-badge">KRC 관련성 ${notice.relevanceScore}점</span>`;
+            relEl.innerHTML = `<span class="badge badge--relevance">KRC 관련성 ${notice.relevanceScore}점</span>`;
         } else { relEl.innerHTML = ''; }
-        tagsEl.innerHTML = krcTagsHtml(notice.krcTags||[]);
+        tagsEl.innerHTML = tagBadges(notice.krcTags||[]);
 
         // 기본 필드
-        document.getElementById('detailSource').innerHTML = `<span class="source-badge">${SOURCE_LABELS[notice.source]||notice.source}</span>`;
+        document.getElementById('detailSource').innerHTML = sourceBadge(notice.source);
         document.getElementById('detailCountry').textContent = notice.country || '-';
         document.getElementById('detailClient').textContent = notice.client || '-';
         document.getElementById('detailSector').textContent = notice.sector || '-';
 
         _setOrHideRow('detailProcCat', notice.procurementCategory);
         _setOrHideRow('detailNoticeType', notice.noticeType);
-        _setOrHideRow('detailProjectName', notice.projectName || (notice.projectId ? `${notice.projectId}` : null));
+        // 프로젝트명: 한글 우선, 영문 병기
+        const projDisplay = notice.projectNameKo
+            ? `${notice.projectNameKo}${notice.projectName && notice.projectName !== notice.projectNameKo ? ` (${notice.projectName})` : ''}`
+            : (notice.projectName || (notice.projectId ? `${notice.projectId}` : null));
+        _setOrHideRow('detailProjectName', projDisplay);
+
+        // 한글 본문 요약 박스
+        const ntKoBox = document.getElementById('detailNoticeTextKo');
+        const ntKoBody = document.getElementById('detailNoticeTextKoBody');
+        if (notice.noticeTextKo) {
+            ntKoBody.textContent = notice.noticeTextKo;
+            ntKoBox.style.display = '';
+        } else {
+            ntKoBox.style.display = 'none';
+        }
 
         const amtStr = notice.amountValue
             ? `${notice.amountCurrency||''} ${notice.amountValue.toLocaleString()} (${notice.contractValue||''})`
@@ -1049,6 +1084,62 @@
     });
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') closeDetailModal();
+    });
+    </script>
+
+    <!-- Supabase 인증 / 추적 모듈 -->
+    <script type="module">
+    import {
+        renderAuthUI, trackPageView, trackSearch,
+        trackNoticeView, loadUserBookmarks, toggleBookmark,
+    } from '/assets/js/supabase-client.js';
+
+    // 인라인 스크립트와 브리지 (window.*)
+    window._krcTrackSearch     = (q, src, cnt) => trackSearch(q, src, cnt);
+    window._krcTrackNoticeView = (id, src)     => trackNoticeView(id, src);
+
+    window._handleBookmark = async function(noticeId, btn) {
+        const isBookmarked = window._userBookmarks?.has(noticeId) ?? false;
+        const newState = await toggleBookmark(noticeId, isBookmarked);
+        if (newState) {
+            window._userBookmarks?.add(noticeId);
+            btn.textContent = '★';
+            btn.classList.add('bookmarked');
+            btn.title = '북마크 해제';
+        } else {
+            window._userBookmarks?.delete(noticeId);
+            btn.textContent = '☆';
+            btn.classList.remove('bookmarked');
+            btn.title = '북마크 추가';
+        }
+        // 같은 공고의 다른 북마크 버튼도 동기화
+        document.querySelectorAll(`.bookmark-btn[data-nid="${noticeId}"]`).forEach(b => {
+            if (b !== btn) {
+                b.textContent = newState ? '★' : '☆';
+                b.classList.toggle('bookmarked', newState);
+            }
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        // 헤더 인증 UI 삽입
+        const nav = document.getElementById('mainNav');
+        await renderAuthUI(nav, { showAdminLink: true, showAnalyticsLink: true });
+
+        // 페이지뷰 추적
+        trackPageView(window.location.pathname);
+
+        // 북마크 로드 (로그인된 경우)
+        window._userBookmarks = await loadUserBookmarks();
+        // 이미 렌더링된 카드 북마크 상태 반영
+        document.querySelectorAll('.bookmark-btn').forEach(btn => {
+            const nid = parseInt(btn.dataset.nid);
+            if (window._userBookmarks.has(nid)) {
+                btn.textContent = '★';
+                btn.classList.add('bookmarked');
+                btn.title = '북마크 해제';
+            }
+        });
     });
     </script>
 </body>

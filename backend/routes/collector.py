@@ -9,9 +9,9 @@ import hashlib
 import threading
 from datetime import datetime
 from email.utils import parsedate_to_datetime
-from functools import wraps
 from flask import Blueprint, request, jsonify, current_app
 from models import db, BidNotice, ScrapingRun
+from auth import admin_required
 
 collector_bp = Blueprint('collector', __name__)
 
@@ -506,6 +506,25 @@ def _wb_extract_details(raw_html: str) -> dict:
     return details
 
 
+# ── notice_text 자동 추출 ────────────────────────────────────────────────────
+def _extract_notice_text(raw_data) -> str | None:
+    """raw_data 에서 공고 본문 발췌를 자동으로 뽑아낸다 (수집기별 키 차이 흡수)."""
+    if not isinstance(raw_data, dict):
+        return None
+    wb = raw_data.get('wb_details')
+    if isinstance(wb, dict):
+        for k in ('text_excerpt', 'scope', 'description'):
+            v = wb.get(k)
+            if isinstance(v, str) and v.strip():
+                return v.strip()[:1500]
+    for k in ('description', 'Description', 'bid_description', 'scope',
+              'summary', 'project_summary', 'content', 'body'):
+        v = raw_data.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()[:1500]
+    return None
+
+
 # ── _save_notice ─────────────────────────────────────────────────────────────
 def _save_notice(source, title, country, client, sector,
                  contract_value, deadline, source_url, raw_data,
@@ -600,9 +619,95 @@ def _save_notice(source, title, country, client, sector,
         admin_status='review',   # 관리자 승인 전까지 공개 API에 노출 안 됨
         status='new',
         raw_data=raw_data,
+        notice_text=_extract_notice_text(raw_data),
     )
     db.session.add(notice)
     return True
+
+
+# ── 신규 공고 한글 번역 ─────────────────────────────────────────────────────
+def _translate_pending_notices(limit: int = 100) -> dict:
+    """translated_at IS NULL 인 농업분야 공고들을 일괄 번역.
+
+    Codex CLI 호출이 무겁기 때문에 한 번 실행에 limit 건까지만 처리한다.
+    매일 수집 후 호출되므로 누적적으로 백필됨.
+    """
+    from sqlalchemy import or_
+    from translator import translate_batch
+
+    AGRI_TAGS = ['농업', '수자원']
+    agri_cond = or_(
+        BidNotice.sector == 'agriculture',
+        *[BidNotice.krc_tags.contains([t]) for t in AGRI_TAGS],
+    )
+    pending = (
+        BidNotice.query
+        .filter(agri_cond, BidNotice.translated_at.is_(None))
+        .order_by(BidNotice.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    if not pending:
+        return {'translated': 0, 'pending_remaining': 0}
+
+    # 평탄화: 각 row 의 (id, field_name, original_text) 튜플
+    flat = []
+    for n in pending:
+        if n.title and not n.title_ko:
+            flat.append((n.id, 'title_ko', n.title))
+        if n.project_name and not n.project_name_ko:
+            flat.append((n.id, 'project_name_ko', n.project_name))
+        if n.notice_text and not n.notice_text_ko:
+            flat.append((n.id, 'notice_text_ko', n.notice_text))
+
+    if not flat:
+        # 번역할 게 없으면 translated_at 만 마킹하고 종료
+        now = datetime.utcnow()
+        for n in pending:
+            n.translated_at = now
+        db.session.commit()
+        return {'translated': 0, 'marked': len(pending), 'pending_remaining': 0}
+
+    texts = [t for _, _, t in flat]
+    translations = translate_batch(texts)
+
+    # 결과 반영. translation == None 은 codex 호출/파싱 실패 (다음 차례 재시도 대상)
+    updates: dict[int, dict[str, str]] = {}
+    failed_row_ids: set[int] = set()
+    for (nid, field, _), tr in zip(flat, translations):
+        if tr is None:
+            failed_row_ids.add(nid)
+            continue
+        if tr:
+            updates.setdefault(nid, {})[field] = tr
+
+    now = datetime.utcnow()
+    translated_count = 0
+    fully_marked = 0
+    for n in pending:
+        if n.id in updates:
+            for field, val in updates[n.id].items():
+                setattr(n, field, val)
+            translated_count += 1
+        # 이 row 의 모든 필드가 성공적으로 번역됐을 때만 translated_at 마킹
+        # 한 필드라도 실패가 남아 있으면 다음 차례 재시도 대상으로 유지
+        if n.id not in failed_row_ids:
+            n.translated_at = now
+            fully_marked += 1
+
+    db.session.commit()
+
+    remaining = (
+        BidNotice.query
+        .filter(agri_cond, BidNotice.translated_at.is_(None))
+        .count()
+    )
+    return {
+        'translated': translated_count,
+        'marked_complete': fully_marked,
+        'failed_rows': len(failed_row_ids),
+        'pending_remaining': remaining,
+    }
 
 
 # ── Tier 1: World Bank API ───────────────────────────────────────────────────
@@ -845,31 +950,30 @@ def _collect_via_ungm(source_key: str) -> list:
             break
 
         soup = BeautifulSoup(r.text, 'html.parser')
-        rows = soup.select('tr.tableRow')
+        # UNGM HTML structure: div.tableRow / div.tableCell (not tr/td)
+        rows = soup.select('div.tableRow')
         if not rows:
             break
 
         for row in rows:
-            cells = row.find_all('td')
+            cells = row.select('div.tableCell')
             if len(cells) < 6:
                 continue
 
-            notice_id_el = row.get('id', '') or row.select_one('td:first-child')
             notice_id = row.get('data-noticeid', '')
 
-            title_el = cells[1].select_one('a') or cells[1]
-            title = title_el.get_text(strip=True)
+            title = cells[1].get_text(strip=True) if len(cells) > 1 else ''
             if not title:
                 continue
 
-            href = title_el.get('href', '') if hasattr(title_el, 'get') else ''
-            source_url = ('https://www.ungm.org' + href) if href.startswith('/') else href
-            if not source_url or not source_url.startswith('http'):
-                source_url = f'https://www.ungm.org/Public/Notice/{notice_id}' if notice_id else ''
+            source_url = (f'https://www.ungm.org/Public/Notice/{notice_id}'
+                          if notice_id else '')
             if not source_url:
                 continue
 
-            deadline = cells[2].get_text(strip=True) if len(cells) > 2 else ''
+            deadline_raw = cells[2].get_text(strip=True) if len(cells) > 2 else ''
+            # strip timezone noise: "01-Jun-2026 18:00\n(GMT 0.00)..." → "01-Jun-2026"
+            deadline = deadline_raw.split()[0] if deadline_raw else ''
             if _is_deadline_passed(deadline):
                 continue
 
@@ -1271,10 +1375,10 @@ def _collect_koica() -> list:
 
 # ── Tier 2: EDCF ──────────────────────────────────────────────────────────────
 def _collect_edcf() -> list:
-    """EDCF — edcfkorea.go.kr AJAX 스크래핑.
+    """EDCF — edcfkorea.go.kr 목록 페이지 직접 파싱.
 
-    POST /fnct/popup/popupajax → {"boardtypeid":"162","currentpage":N} → HTML 응답
-    boardtypeid=162: 입찰공고
+    GET /fe/HPHFFE065M01?boardtypeid=162&pagesize=10&currentpage=N
+    div.notice-list-item 구조에서 공고 수집
     """
     try:
         import requests as req
@@ -1283,33 +1387,19 @@ def _collect_edcf() -> list:
         return []
 
     base = 'https://www.edcfkorea.go.kr'
-    ajax_url = f'{base}/fnct/popup/popupajax'
-    list_page_url = f'{base}/fe/HPHFFE065M01'
-
-    session = req.Session()
-    # 먼저 목록 페이지 방문해 세션 쿠키 획득
-    try:
-        session.get(list_page_url,
-                    headers=_browser_headers(referer='https://www.edcfkorea.go.kr/'),
-                    timeout=15)
-    except Exception:
-        pass
+    list_base_url = f'{base}/fe/HPHFFE065M01'
 
     results = []
     seen = set()
     MAX_PAGES = 5
 
     for page in range(1, MAX_PAGES + 1):
+        url = (f'{list_base_url}?boardtypeid=162&isIframe=&pagesize=10'
+               f'&currentpage={page}')
         try:
-            resp = session.post(
-                ajax_url,
-                json={'boardtypeid': '162', 'currentpage': page, 'searchword': ''},
-                headers={
-                    **_browser_headers(referer=list_page_url),
-                    'Content-Type': 'application/json;charset=UTF-8',
-                    'Accept': 'text/html, */*; q=0.01',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
+            resp = req.get(
+                url,
+                headers=_browser_headers(referer=list_base_url),
                 timeout=20,
             )
             resp.raise_for_status()
@@ -1318,87 +1408,80 @@ def _collect_edcf() -> list:
             break
 
         soup = BeautifulSoup(resp.text, 'html.parser')
-
-        # div#ajaxbody 또는 tbody 내 행들
-        rows = soup.select('#ajaxbody tr, table tbody tr')
-        if not rows:
-            # 목록 형식이 다를 경우 — 전체 행 탐색
-            rows = soup.find_all('tr')
-
-        if not rows:
+        items = soup.select('div.notice-list-item')
+        if not items:
             break
 
         page_has_items = False
-        for row in rows:
-            cells = row.find_all('td')
-            if len(cells) < 2:
+        for item in items:
+            # 공고 링크에서 board_id 추출 (유니크한 첫 번째)
+            board_id = None
+            title = ''
+            for link in item.select('a[href*="HPHFFE066"]'):
+                m = re.search(r'boardid=(\d+)', link.get('href', ''))
+                if not m:
+                    continue
+                if board_id is None:
+                    board_id = m.group(1)
+                # 가장 긴 텍스트 링크 = 사업명
+                link_text = link.get_text(strip=True)
+                if len(link_text) > len(title):
+                    title = link_text
+
+            if not board_id or not title:
                 continue
 
-            # 제목 링크 찾기
-            title_el = (row.select_one('td.subject a')
-                        or row.select_one('td a[href*="boardid"]')
-                        or row.select_one('td a'))
-            if not title_el:
-                continue
-
-            title = title_el.get_text(strip=True)
-            if not title:
-                continue
-
-            # boardid 추출 (URL 또는 onclick에서)
-            href = title_el.get('href', '')
-            onclick = title_el.get('onclick', '')
-            board_id_match = (re.search(r'boardid[=:]?\s*["\']?(\d+)', href)
-                              or re.search(r'boardid[=:]?\s*["\']?(\d+)', onclick)
-                              or re.search(r"['\"](\d{4,})['\"]", onclick))
-            if board_id_match:
-                board_id = board_id_match.group(1)
-            else:
-                # URL에서 마지막 숫자 시도
-                nums = re.findall(r'\d{4,}', href + onclick)
-                board_id = nums[-1] if nums else None
-
-            if not board_id:
-                continue
-
-            source_url = (f'{base}/fe/HPHFFE066M01?boardtypeid=162&boardid={board_id}')
+            source_url = (f'{base}/fe/HPHFFE066M01?isIframe='
+                          f'&pagesize=10&boardtypeid=162&boardid={board_id}')
             if source_url in seen:
                 continue
             seen.add(source_url)
 
-            # 행에서 마감일 추출 — 셀 텍스트 순회
-            deadline = ''
-            country = ''
-            row_text = row.get_text(' ', strip=True)
+            item_text = item.get_text(' ', strip=True)
 
-            # 날짜 패턴 (YYYY-MM-DD 또는 YYYY.MM.DD)
-            date_matches = re.findall(r'\d{4}[-./]\d{1,2}[-./]\d{1,2}', row_text)
-            if len(date_matches) >= 2:
-                deadline = date_matches[-1].replace('.', '-').replace('/', '-')
-            elif date_matches:
-                deadline = date_matches[0].replace('.', '-').replace('/', '-')
-
-            if _is_deadline_passed(deadline):
+            # 등록일 추출 (YYYY.MM.DD)
+            date_m = re.search(r'(\d{4}\.\d{2}\.\d{2})', item_text)
+            posted_str = date_m.group(1).replace('.', '-') if date_m else ''
+            if _is_stale_date(posted_str, days=DEFAULT_FRESHNESS_DAYS):
                 continue
 
-            # 간단한 국가 추출 (셀에서 발견 시)
-            for cell in cells:
-                cell_text = cell.get_text(strip=True)
-                for kw in COUNTRY_COORDS.keys():
-                    if kw in cell_text and len(kw) > 4:
-                        country = kw
-                        break
-                if country:
+            # 국가 추출
+            country = ''
+            for kw in COUNTRY_COORDS.keys():
+                if len(kw) > 4 and kw in item_text:
+                    country = kw
                     break
+            # 한국어 국가명 보완
+            if not country:
+                ko_map = {
+                    '우즈베키스탄': 'Uzbekistan', '라오스': 'Laos', '몽골': 'Mongolia',
+                    '캄보디아': 'Cambodia', '에티오피아': 'Ethiopia', '탄자니아': 'Tanzania',
+                    '필리핀': 'Philippines', '미얀마': 'Myanmar', '베트남': 'Vietnam',
+                    '인도네시아': 'Indonesia', '방글라데시': 'Bangladesh', '파키스탄': 'Pakistan',
+                    '케냐': 'Kenya', '르완다': 'Rwanda', '가나': 'Ghana', '세네갈': 'Senegal',
+                    '이집트': 'Egypt', '모로코': 'Morocco', '네팔': 'Nepal', '스리랑카': 'Sri Lanka',
+                }
+                for ko, en in ko_map.items():
+                    if ko in item_text:
+                        country = en
+                        break
 
-            # 키워드 필터 — EDCF는 인프라/농업 모두 수집 (KRC 관련성 높음)
-            combined = title + ' ' + row_text
+            # 키워드 필터 — EDCF는 인프라/농업/컨설팅 수집
+            combined = title + ' ' + item_text
             agri_hit = _is_agri(combined) or _is_agri_ko(combined)
             cons_hit = _is_consulting(combined) or _is_consulting_ko(combined)
-            infra_hit = bool(re.search(r'\b(?:인프라|공사|건설|construction|infrastructure)\b',
-                                       combined, re.IGNORECASE))
+            infra_hit = bool(re.search(
+                r'\b(?:인프라|공사|건설|construction|infrastructure|교량|도로|수도)\b',
+                combined, re.IGNORECASE))
             if not agri_hit and not cons_hit and not infra_hit:
                 continue
+
+            # 사업분류 추출
+            notice_type = ''
+            if '개도국발주사업' in item_text:
+                notice_type = 'Procurement Notice (개도국발주)'
+            elif 'EDCF발주사업' in item_text:
+                notice_type = 'Procurement Notice (EDCF발주)'
 
             page_has_items = True
             results.append({
@@ -1408,11 +1491,13 @@ def _collect_edcf() -> list:
                 'country': country,
                 'client': 'EDCF',
                 'sector': 'consulting' if cons_hit and not agri_hit else 'agriculture',
-                'notice_type': 'Procurement Notice',
-                'contract_value': _extract_value_from_text(row_text),
-                'deadline': deadline,
+                'notice_type': notice_type,
+                'contract_value': '',
+                'deadline': '',
+                'posted_date': posted_str,
                 'source_url': source_url,
-                'raw_data': {'board_id': board_id, 'title': title, 'row_text': row_text[:500]},
+                'raw_data': {'board_id': board_id, 'title': title,
+                             'posted': posted_str, 'country': country},
             })
 
         if not page_has_items:
@@ -1556,6 +1641,16 @@ def _do_collect(sources: list = None, trigger: str = 'manual') -> dict:
         db.session.rollback()
         return {'success': False, 'error': f'DB 저장 실패: {e}'}
 
+    # 신규 + 미번역 공고 한글 번역 (Codex CLI 호출이 무거우므로 일괄)
+    translation_summary = {}
+    if os.environ.get('TRANSLATE_AFTER_COLLECT', '1') != '0':
+        try:
+            translation_summary = _translate_pending_notices(
+                limit=int(os.environ.get('TRANSLATE_LIMIT', '50'))
+            )
+        except Exception as e:
+            translation_summary = {'error': str(e)}
+
     return {
         'success': True,
         'created': created,
@@ -1565,21 +1660,9 @@ def _do_collect(sources: list = None, trigger: str = 'manual') -> dict:
         'by_source': created_by_source,
         'errors': errors,
         'sources': sources_summary,
+        'translation': translation_summary,
         'collected_at': datetime.utcnow().isoformat() + 'Z',
     }
-
-
-# ── 인증 데코레이터 ──────────────────────────────────────────────────────────
-def admin_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        key = (request.headers.get('X-Admin-Key')
-               or request.args.get('key', ''))
-        admin_key = current_app.config.get('ADMIN_KEY', '')
-        if not admin_key or key != admin_key:
-            return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-        return f(*args, **kwargs)
-    return decorated
 
 
 # ── 엔드포인트 ────────────────────────────────────────────────────────────────

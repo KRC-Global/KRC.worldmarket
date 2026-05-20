@@ -82,6 +82,25 @@
     --color-info-500: #17A2B8;
     --color-info-100: #D1ECF1;
 
+    /* ─── Accent Colors (농업 그린 액센트) ─── */
+    --color-accent-700: #1F5C3F;
+    --color-accent-500: #2F855A;
+    --color-accent-300: #68B488;
+    --color-accent-100: #E8F4EE;
+    --color-accent-50:  #F4FAF6;
+
+    /* ─── KRC 태그별 컬러 매핑 ─── */
+    --tag-agri:        #2F855A;   /* 농업 */
+    --tag-agri-bg:     #E8F4EE;
+    --tag-water:       #2563EB;   /* 수자원 */
+    --tag-water-bg:    #DBEAFE;
+    --tag-climate:     #D97706;   /* 기후복원력 */
+    --tag-climate-bg:  #FEF3C7;
+    --tag-infra:       #6B7280;   /* 인프라 */
+    --tag-infra-bg:    #E5E7EB;
+    --tag-consulting:  #7C3AED;   /* 컨설팅 */
+    --tag-consulting-bg: #EDE9FE;
+
     /* ─── Typography ─── */
     --font-family-primary: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-family-mono: 'JetBrains Mono', 'Consolas', monospace;
