@@ -20,7 +20,9 @@ from config import config
 
 app = Flask(__name__, static_folder='..', static_url_path='')
 
-config_name = os.environ.get('FLASK_ENV', 'default')
+config_name = os.environ.get('FLASK_ENV') or 'default'
+if config_name not in config:
+    config_name = 'default'
 app.config.from_object(config[config_name])
 
 # CORS — 공개 API는 전체 허용, 관리자 API는 admin_api.py에서 별도 제한
