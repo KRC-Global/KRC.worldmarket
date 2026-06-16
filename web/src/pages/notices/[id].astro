@@ -1,0 +1,52 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { supabase } from "../../lib/supabase";
+import { MDB_LABELS, type Notice } from "../../types";
+
+const { id } = Astro.params;
+const { data: notice } = await supabase
+  .from("notices").select("*").eq("id", id).single();
+const { data: attachments } = await supabase
+  .from("attachments").select("*").eq("notice_id", id);
+
+if (!notice) return Astro.redirect("/notices");
+const n = notice as Notice;
+const s = n.summary ?? {};
+---
+
+<Layout title={n.title}>
+  <p><a href="/notices">← 목록</a></p>
+  <div class="grid" style="grid-template-columns: 1fr 320px;">
+    <div>
+      <span style="color:var(--accent)">{MDB_LABELS[n.source]}</span>
+      <h1>{n.title}</h1>
+      <div class="card" style="margin-bottom:16px">
+        <h3>개요</h3>
+        <table>
+          {Object.entries(s).map(([k, v]) => (
+            <tr><td style="color:var(--muted);padding:4px 12px 4px 0;vertical-align:top">{k}</td><td style="padding:4px 0">{v || "-"}</td></tr>
+          ))}
+        </table>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <h3>첨부문서</h3>
+        {attachments?.length ? (
+          <ul>{attachments.map((a: any) => <li><a href={a.source_url}>{a.filename ?? a.source_url}</a></li>)}</ul>
+        ) : <p style="color:var(--muted)">첨부 없음</p>}
+      </div>
+      <div class="card">
+        <h3>원문</h3>
+        <p style="white-space:pre-wrap;color:var(--muted)">{n.raw_text ?? "-"}</p>
+        <p><a href={n.source_url} target="_blank" rel="noopener">원문 보기 ↗</a></p>
+      </div>
+    </div>
+    <aside>
+      {n.hero_image_url && <img src={n.hero_image_url} alt="" style="width:100%;border-radius:12px;border:1px solid var(--line)" />}
+      <div class="card" style="margin-top:16px">
+        <div style="color:var(--muted)">국가</div><div>{n.country ?? "-"}</div>
+        <div style="color:var(--muted);margin-top:8px">마감</div><div>{n.deadline_at?.slice(0,10) ?? "-"}</div>
+        <div style="color:var(--muted);margin-top:8px">분야</div><div>{n.ag_subsector ?? "-"}</div>
+      </div>
+    </aside>
+  </div>
+</Layout>

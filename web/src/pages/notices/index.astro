@@ -1,0 +1,9 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import NoticeTable from "../../components/NoticeTable.tsx";
+---
+
+<Layout title="공고 목록">
+  <h1>발주공고 목록</h1>
+  <NoticeTable client:load />
+</Layout>

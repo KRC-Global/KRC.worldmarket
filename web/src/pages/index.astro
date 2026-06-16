@@ -1,0 +1,22 @@
+---
+import Layout from "../layouts/Layout.astro";
+import DashboardCharts from "../components/DashboardCharts.tsx";
+import { supabase } from "../lib/supabase";
+
+// 핵심 지표 (SSR)
+const { count: total } = await supabase.from("notices").select("id", { count: "exact", head: true });
+const { count: open } = await supabase
+  .from("notices").select("id", { count: "exact", head: true })
+  .gte("deadline_at", new Date().toISOString());
+---
+
+<Layout title="대시보드">
+  <h1>농업분야 MDB 발주공고 현황</h1>
+  <div class="grid" style="grid-template-columns:repeat(3,1fr); margin-bottom:20px;">
+    <div class="card"><div style="color:var(--muted)">전체 공고</div><div style="font-size:32px;font-weight:700">{total ?? 0}</div></div>
+    <div class="card"><div style="color:var(--muted)">진행중</div><div style="font-size:32px;font-weight:700">{open ?? 0}</div></div>
+    <div class="card"><div style="color:var(--muted)">기관</div><div style="font-size:32px;font-weight:700">7</div></div>
+  </div>
+  <DashboardCharts client:load />
+  <p style="margin-top:20px"><a href="/notices">→ 전체 공고 목록 보기</a></p>
+</Layout>

@@ -1,38 +1,22 @@
-# Python
+# secrets
+.env
+.env.*
+!.env.example
+web/.env.local
+
+# python
+ingestion/.venv/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-dist/
-build/
-.venv/
-venv/
-env/
 
-# 환경변수 — 절대 커밋 금지
-.env
-.env.local
-.env.production
+# node / astro
+node_modules/
+web/node_modules/
+web/dist/
+web/.astro/
+web/.vercel/
 
-# DB 파일
-*.db
-*.sqlite
-*.sqlite3
-
-# 로그
-logs/
+# data scratch
+ingestion/_cache/
 *.log
-
-# macOS
 .DS_Store
-
-# 에디터
-.vscode/
-.idea/
-*.swp
-
-# Claude 내부 파일
-.claude/
-claude_platform.md
