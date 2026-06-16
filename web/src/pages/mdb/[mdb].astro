@@ -1,0 +1,22 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { supabase } from "../../lib/supabase";
+import { MDB_LABELS, type MdbSource, type Notice } from "../../types";
+
+const { mdb } = Astro.params;
+const label = MDB_LABELS[mdb as MdbSource] ?? mdb;
+const { data } = await supabase
+  .from("notices").select("*").eq("source", mdb)
+  .order("published_at", { ascending: false }).limit(200);
+const rows = (data as Notice[]) ?? [];
+---
+
+<Layout title={`${label} 현황`}>
+  <p><a href="/">← 대시보드</a></p>
+  <h1>{label} 발주공고 ({rows.length})</h1>
+  <ul>
+    {rows.map((r) => (
+      <li><a href={`/notices/${r.id}`}>{r.title}</a> <span style="color:var(--muted)">— {r.country ?? "-"}</span></li>
+    ))}
+  </ul>
+</Layout>

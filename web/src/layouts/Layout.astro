@@ -1,0 +1,36 @@
+---
+interface Props { title?: string }
+const { title = "MDB 농업 발주공고" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <style is:global>
+      :root { --bg:#0f1115; --card:#181b22; --line:#272b35; --fg:#e7e9ee; --muted:#9aa3b2; --accent:#4ade80; }
+      * { box-sizing: border-box; }
+      body { margin:0; background:var(--bg); color:var(--fg); font-family:-apple-system,"Apple SD Gothic Neo",system-ui,sans-serif; }
+      a { color:inherit; }
+      header { border-bottom:1px solid var(--line); padding:16px 24px; display:flex; gap:20px; align-items:center; }
+      header .brand { font-weight:700; }
+      header nav a { color:var(--muted); text-decoration:none; margin-right:16px; font-size:14px; }
+      header nav a:hover { color:var(--fg); }
+      main { max-width:1200px; margin:0 auto; padding:24px; }
+      .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; }
+      .grid { display:grid; gap:16px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="brand">🌾 MDB 농업 발주공고</span>
+      <nav>
+        <a href="/">대시보드</a>
+        <a href="/notices">공고 목록</a>
+      </nav>
+    </header>
+    <main><slot /></main>
+  </body>
+</html>
