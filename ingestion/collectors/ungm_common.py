@@ -26,10 +26,12 @@ def collect_via_ungm(source_key: str, limit: int = 50) -> list[dict]:
     rows: list[dict] = []
     page = 1
     while page <= _MAX_PAGES and len(rows) < limit:
+        # UNGM 검색은 기관 필터를 `Agencies`(배열)로 받는다. 과거 `AgencyId`(단수)는
+        # 무시돼 전체 최신 공고가 반환됐다(ADB/AfDB 결과가 동일해지는 원인).
         payload = {
-            "pageIndex": page, "pageSize": _PAGE_SIZE,
-            "sortField": "DatePublished", "sortOrder": "desc",
-            "UNSPSCCodes": "", "AgencyId": agency_id, "Keywords": "",
+            "PageIndex": page, "PageSize": _PAGE_SIZE,
+            "SortField": "DatePublished", "SortOrder": "desc",
+            "UNSPSCCodes": "", "Agencies": [agency_id], "Keywords": "",
         }
         try:
             r = req.post(

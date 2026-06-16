@@ -1,11 +1,11 @@
-"""KOICA 발주공고 — KOICA_API_KEY 있으면 data.go.kr OpenAPI, 없으면 nebid.koica.go.kr HTML 스크래핑.
+"""KOICA 발주공고 — KOICA_API_KEY 있으면 data.go.kr OpenAPI 로 수집.
 
 KRC.worldmarket 의 _collect_koica 이식. 농업/컨설팅(용역) 키워드(영/한)로 필터.
+공개 포털(nebid) 폴백은 팝업/JS 렌더라 requests 로 불가 → 키 사용 권장.
 """
 from __future__ import annotations
 
 import os
-import re
 
 from . import _mdb_common as C
 
@@ -77,72 +77,13 @@ def _collect_api(req, service_key: str, limit: int) -> list[dict]:
 
 
 def _collect_nebid(req, limit: int) -> list[dict]:
-    from bs4 import BeautifulSoup
+    """공개 포털(nebid.koica.go.kr) HTML 폴백.
 
-    list_url = "https://nebid.koica.go.kr/oep/bepb/beffatPblancList.do"
-    rows: list[dict] = []
-    seen: set[str] = set()
-    try:
-        r = req.get(list_url, headers=C.browser_headers(referer="https://nebid.koica.go.kr/"),
-                    timeout=20, verify=False)
-        r.raise_for_status()
-        soup = BeautifulSoup(r.text, "html.parser")
-        table_rows = soup.select("tr.row[onclick]") or soup.select("tbody tr[onclick]")
-        print(f"  [KOICA-nebid] rows: {len(table_rows)}")
-    except Exception as e:  # noqa: BLE001
-        print(f"  [KOICA-nebid] 오류: {e}")
-        return rows
-
-    for row in table_rows:
-        m = re.search(r"beffatPblancInfoDetailInqire\('([^']+)'\)", row.get("onclick", ""))
-        if not m:
-            continue
-        bid_no = m.group(1)
-        detail_url = ("https://nebid.koica.go.kr/oep/bepb/"
-                      f"beffatPblancInfoDetailInqire.do?pblancNo={bid_no}")
-        if detail_url in seen:
-            continue
-        seen.add(detail_url)
-
-        cols = [c.get_text(" ", strip=True) for c in row.select("td")]
-        if len(cols) < 6:
-            continue
-        bid_kind, item_kind = cols[2], cols[3]
-        title_td = row.select_one("td.left_T, td[title]")
-        title = (title_td.get("title") if title_td and title_td.get("title")
-                 else (cols[4] if len(cols) > 4 else ""))
-        if not title:
-            continue
-        period = cols[5] if len(cols) > 5 else ""
-        deadline_match = re.findall(r"\d{4}-\d{2}-\d{2}", period)
-        deadline = deadline_match[-1] if deadline_match else ""
-        if C.is_deadline_passed(deadline):
-            continue
-        posted = cols[-1] if cols else ""
-        if C.is_stale_date(posted, days=C.DEFAULT_FRESHNESS_DAYS):
-            continue
-
-        combined = f"{title} {bid_kind} {item_kind}"
-        agri_hit = C.is_agri(combined) or C.is_agri_ko(combined)
-        cons_hit = C.is_consulting(combined) or C.is_consulting_ko(combined) or item_kind == "용역"
-        if not agri_hit and not cons_hit:
-            continue
-
-        rows.append(C.to_normalized({
-            "source": "koica",
-            "source_id": bid_no,
-            "title": C.decorate_title(title, bid_kind or item_kind),
-            "country": "",
-            "client": "KOICA",
-            "sector": "agriculture" if agri_hit else "consulting",
-            "notice_type": bid_kind,
-            "contract_value": "",
-            "deadline": deadline,
-            "posted_date": posted[:10] if posted else None,
-            "source_url": detail_url,
-            "raw_data": {"bid_no": bid_no, "title": title, "bid_kind": bid_kind,
-                         "item_kind": item_kind, "period": period, "posted": posted},
-        }))
-        if len(rows) >= limit:
-            break
-    return rows
+    현재 nebid 공고 목록은 다단계 팝업/AJAX(`pblancPopupInqire`)로 렌더돼 단순
+    requests 로는 개별 공고 행을 얻을 수 없다(초기 HTML 에는 카테고리 요약만 존재).
+    안정적 수집 경로는 data.go.kr OpenAPI 이므로 KOICA_API_KEY 사용을 권장한다.
+    헤드리스 브라우저(Playwright) 기반 스크래핑은 M2 단계 과제.
+    """
+    print("  [KOICA] KOICA_API_KEY(data.go.kr) 미설정 — 공개 포털은 팝업/JS 렌더라 "
+          "requests 스크래핑 불가. 키 설정 시 OpenAPI 로 수집됩니다.")
+    return []
