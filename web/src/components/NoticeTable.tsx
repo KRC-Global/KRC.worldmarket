@@ -4,11 +4,11 @@ import { MDB_LABELS, type MdbSource, type Notice } from "../types";
 
 const SOURCES = Object.keys(MDB_LABELS) as MdbSource[];
 
-// 기관별 Slack 카테고리 색 (배지 좌측 점)
+// 기관별 KRDS 카테고리 색 (배지 좌측 점)
 const SRC_COLOR: Record<MdbSource, string> = {
-  wb: "#36c5f0", adb: "#2eb67d", aiib: "#ecb22e", afdb: "#e01e5a",
-  isdb: "#2eb67d", ungm: "#36c5f0",
-  koica: "#b07fca", edcf: "#1ab9ff", jica: "#cda4d6",
+  wb: "#256ef4", adb: "#228738", aiib: "#0b78cb", afdb: "#d63d4a",
+  isdb: "#346fb2", ungm: "#0b78cb",
+  koica: "#9e6a00", edcf: "#346fb2", jica: "#6d7882",
 };
 
 export default function NoticeTable() {
@@ -73,7 +73,7 @@ export default function NoticeTable() {
               {filtered.map((r) => (
                 <tr key={r.id}>
                   <td>
-                    <span className="badge" style={{ color: SRC_COLOR[r.source], borderColor: "transparent", background: "rgb(255 255 255 / .04)" }}>
+                    <span className="badge" style={{ color: SRC_COLOR[r.source], background: "var(--g5)", borderColor: "var(--line)" }}>
                       <span className="dot" /> {MDB_LABELS[r.source]}
                     </span>
                   </td>
@@ -100,7 +100,7 @@ function Skeleton() {
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
       <style>{`@media (prefers-reduced-motion:no-preference){.sk{animation:shimmer 1.3s ease-in-out infinite}}@keyframes shimmer{0%,100%{opacity:.5}50%{opacity:.85}}`}</style>
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} style={{ display: "flex", gap: 16, padding: "14px 12px", borderBottom: i < 7 ? "1px solid var(--line-soft)" : "none" }}>
+        <div key={i} style={{ display: "flex", gap: 16, padding: "14px 12px", borderBottom: i < 7 ? "1px solid var(--line)" : "none" }}>
           <Bar w={84} /><Bar w="40%" /><Bar w={70} /><Bar w={90} /><Bar w={74} />
         </div>
       ))}
@@ -109,7 +109,7 @@ function Skeleton() {
 }
 
 function Bar({ w }: { w: number | string }) {
-  return <span className="sk" style={{ height: 12, width: w, borderRadius: 6, background: "var(--surface-hover)", display: "inline-block" }} />;
+  return <span className="sk" style={{ height: 12, width: w, borderRadius: 6, background: "var(--g10)", display: "inline-block" }} />;
 }
 
 function Empty({ hasQuery }: { hasQuery: boolean }) {
