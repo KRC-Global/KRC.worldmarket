@@ -1,17 +1,22 @@
-"""인포그래픽/히어로 이미지 생성 — OpenAI gpt-image.
+"""히어로 이미지 생성 → Supabase Storage 업로드 → public URL 반환.
 
-OPENAI_API_KEY (Codex OAuth 와 별개) 필요. 생성 후 Supabase Storage 에 업로드하고
-public URL 을 반환. 키가 없으면 None 반환(스킵).
+기본 제공자는 Pollinations(무료·무키, FLUX). IMAGE_PROVIDER=openai 로 바꾸고
+OPENAI_API_KEY 를 주면 gpt-image-1 사용(유료). 실패/무키 시 None(스킵).
 """
 from __future__ import annotations
 
 import base64
+import hashlib
 import os
+import urllib.parse
 from typing import Optional
 
 from . import supabase_client
 
-MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
+IMAGE_PROVIDER = os.environ.get("IMAGE_PROVIDER", "pollinations")
+OPENAI_IMAGE_MODEL = os.environ.get("OPENAI_IMAGE_MODEL", "gpt-image-1")
+POLLINATIONS_MODEL = os.environ.get("POLLINATIONS_MODEL", "flux")
+_W, _H = 1280, 720
 
 
 def _prompt(notice: dict) -> str:
@@ -25,8 +30,34 @@ def _prompt(notice: dict) -> str:
     )
 
 
-def generate(notice: dict) -> Optional[str]:
-    """공고용 히어로 이미지를 생성·업로드하고 public URL 반환. 실패/무키 시 None."""
+def _upload(notice: dict, img: bytes) -> Optional[str]:
+    if not img or len(img) < 1500:  # 에러/플레이스홀더 이미지 방지
+        return None
+    path = f"{notice['source']}/{notice['source_notice_id']}.png".replace(" ", "_")
+    return supabase_client.upload_bytes(
+        supabase_client.BUCKET_IMAGES, path, img, "image/png"
+    )
+
+
+def _gen_pollinations(notice: dict) -> Optional[bytes]:
+    """Pollinations.ai — 무료·무키. URL 호출로 이미지 바이트 반환."""
+    import requests as req
+
+    prompt = urllib.parse.quote(_prompt(notice))
+    seed = int(hashlib.md5(str(notice.get("source_notice_id", "")).encode()).hexdigest()[:8], 16)
+    url = (f"https://image.pollinations.ai/prompt/{prompt}"
+           f"?width={_W}&height={_H}&nologo=true&model={POLLINATIONS_MODEL}&seed={seed}")
+    try:
+        r = req.get(url, timeout=120, headers={"User-Agent": "balju-gonggo-bot/0.1"})
+        if r.status_code == 200 and r.content and "image" in r.headers.get("content-type", ""):
+            return r.content
+        print(f"  [illustrate-pollinations] HTTP {r.status_code} ct={r.headers.get('content-type')}")
+    except Exception as e:  # noqa: BLE001
+        print(f"  [illustrate-pollinations] 실패: {e}")
+    return None
+
+
+def _gen_openai(notice: dict) -> Optional[bytes]:
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         return None
@@ -35,14 +66,18 @@ def generate(notice: dict) -> Optional[str]:
 
         client = OpenAI(api_key=api_key)
         result = client.images.generate(
-            model=MODEL, prompt=_prompt(notice), size="1536x1024", n=1
+            model=OPENAI_IMAGE_MODEL, prompt=_prompt(notice), size="1536x1024", n=1
         )
-        b64 = result.data[0].b64_json
-        img_bytes = base64.b64decode(b64)
-        path = f"{notice['source']}/{notice['source_notice_id']}.png".replace(" ", "_")
-        return supabase_client.upload_bytes(
-            supabase_client.BUCKET_IMAGES, path, img_bytes, "image/png"
-        )
+        return base64.b64decode(result.data[0].b64_json)
     except Exception as e:  # noqa: BLE001
-        print(f"  [illustrate] 실패: {e}")
+        print(f"  [illustrate-openai] 실패: {e}")
         return None
+
+
+def generate(notice: dict) -> Optional[str]:
+    """공고용 히어로 이미지를 생성·업로드하고 public URL 반환. 실패 시 None."""
+    if IMAGE_PROVIDER == "openai":
+        img = _gen_openai(notice) or _gen_pollinations(notice)
+    else:
+        img = _gen_pollinations(notice)
+    return _upload(notice, img) if img else None

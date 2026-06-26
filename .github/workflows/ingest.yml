@@ -40,5 +40,7 @@ jobs:
           KOICA_API_KEY: ${{ secrets.KOICA_API_KEY }}
           UNGM_API_KEY: ${{ secrets.UNGM_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        # 일러스트는 Groq 불가(이미지 모델 없음). OPENAI_API_KEY 넣고 --no-illustrate 제거 시 생성.
-        run: python -m ingestion.pipeline --source all --limit 50 --no-illustrate
+          # 일러스트 제공자: pollinations(무료·무키, 기본) | openai(유료, OPENAI_API_KEY 필요)
+          IMAGE_PROVIDER: ${{ vars.IMAGE_PROVIDER || 'pollinations' }}
+        # 요약=Groq, 일러스트=Pollinations(무료) — 둘 다 클라우드에서 동작.
+        run: python -m ingestion.pipeline --source all --limit 50
