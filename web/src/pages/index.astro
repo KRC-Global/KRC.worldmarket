@@ -11,12 +11,26 @@ const { count: open } = await supabase
 ---
 
 <Layout title="대시보드">
-  <h1>농업분야 MDB 발주공고 현황</h1>
-  <div class="grid" style="grid-template-columns:repeat(3,1fr); margin-bottom:20px;">
-    <div class="card"><div style="color:var(--muted)">전체 공고</div><div style="font-size:32px;font-weight:700">{total ?? 0}</div></div>
-    <div class="card"><div style="color:var(--muted)">진행중</div><div style="font-size:32px;font-weight:700">{open ?? 0}</div></div>
-    <div class="card"><div style="color:var(--muted)">기관</div><div style="font-size:32px;font-weight:700">7</div></div>
+  <header style="display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px">
+    <div>
+      <span class="badge"><span class="dot"></span>다자개발은행 농업분야</span>
+      <h1 style="margin-top:10px">농업분야 MDB 발주공고 현황</h1>
+      <p class="muted" style="max-width:60ch">World Bank · ADB · AIIB · AfDB · KOICA · EDCF · JICA 의 농업분야 발주공고를 한곳에서.</p>
+    </div>
+    <a href="/notices" class="btn btn-primary">전체 공고 보기 →</a>
+  </header>
+
+  <div class="grid" style="grid-template-columns:repeat(3,1fr); margin-bottom:22px;">
+    <div class="stat"><div class="k">전체 공고</div><div class="v">{total ?? 0}</div></div>
+    <div class="stat"><div class="k">진행중</div><div class="v">{open ?? 0}</div></div>
+    <div class="stat"><div class="k">수집 기관</div><div class="v">7</div></div>
   </div>
+
   <DashboardCharts client:load />
-  <p style="margin-top:20px"><a href="/notices">→ 전체 공고 목록 보기</a></p>
+
+  <style>
+    @media (max-width: 768px) {
+      .grid[style*="repeat(3"] { grid-template-columns: 1fr !important; }
+    }
+  </style>
 </Layout>

@@ -12,11 +12,14 @@ const country = rows[0]?.country ?? iso;
 ---
 
 <Layout title={`${country} 현황`}>
-  <p><a href="/">← 대시보드</a></p>
-  <h1>{country} 발주공고 ({rows.length})</h1>
-  <ul>
-    {rows.map((r) => (
-      <li><a href={`/notices/${r.id}`}>{r.title}</a> <span style="color:var(--muted)">— {MDB_LABELS[r.source]}</span></li>
-    ))}
-  </ul>
+  <a class="back" href="/">← 대시보드</a>
+  <span class="badge"><span class="dot"></span>{country}</span>
+  <h1 style="margin-top:10px">{country} 발주공고 <span class="muted" style="font-weight:600">({rows.length})</span></h1>
+  <div class="card" style="margin-top:18px;padding:6px 18px">
+    <ul class="clean">
+      {rows.map((r) => (
+        <li><a class="row" href={`/notices/${r.id}`}><span>{r.title}</span><span class="badge"><span class="dot"></span>{MDB_LABELS[r.source]}</span></a></li>
+      ))}
+    </ul>
+  </div>
 </Layout>

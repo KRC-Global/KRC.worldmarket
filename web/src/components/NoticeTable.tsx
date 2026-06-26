@@ -4,6 +4,12 @@ import { MDB_LABELS, type MdbSource, type Notice } from "../types";
 
 const SOURCES = Object.keys(MDB_LABELS) as MdbSource[];
 
+// 기관별 Slack 카테고리 색 (배지 좌측 점)
+const SRC_COLOR: Record<MdbSource, string> = {
+  wb: "#36c5f0", adb: "#2eb67d", aiib: "#ecb22e", afdb: "#e01e5a",
+  koica: "#b07fca", edcf: "#1ab9ff", jica: "#cda4d6",
+};
+
 export default function NoticeTable() {
   const [rows, setRows] = useState<Notice[]>([]);
   const [q, setQ] = useState("");
@@ -35,44 +41,83 @@ export default function NoticeTable() {
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
         <input
-          placeholder="제목·국가·분야 검색"
+          className="field"
+          placeholder="제목 · 국가 · 분야 검색"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          style={inputStyle}
+          aria-label="공고 검색"
+          style={{ flex: "1 1 260px", minWidth: 0 }}
         />
-        <select value={src} onChange={(e) => setSrc(e.target.value)} style={inputStyle}>
+        <select className="field" value={src} onChange={(e) => setSrc(e.target.value)} aria-label="기관 필터">
           <option value="">전체 기관</option>
           {SOURCES.map((s) => <option key={s} value={s}>{MDB_LABELS[s]}</option>)}
         </select>
       </div>
-      {loading ? <p>불러오는 중…</p> : (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-          <thead>
-            <tr style={{ textAlign: "left", color: "#9aa3b2" }}>
-              <th style={th}>기관</th><th style={th}>제목</th><th style={th}>국가</th>
-              <th style={th}>분야</th><th style={th}>마감</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id} style={{ borderTop: "1px solid #272b35" }}>
-                <td style={td}>{MDB_LABELS[r.source]}</td>
-                <td style={td}><a href={`/notices/${r.id}`}>{r.title}</a></td>
-                <td style={td}>{r.country ?? "-"}</td>
-                <td style={td}>{r.ag_subsector ?? "-"}</td>
-                <td style={td}>{r.deadline_at?.slice(0, 10) ?? "-"}</td>
+
+      {loading ? (
+        <Skeleton />
+      ) : filtered.length === 0 ? (
+        <Empty hasQuery={q.trim().length > 0 || src.length > 0} />
+      ) : (
+        <div className="card" style={{ padding: 0, overflowX: "auto" }}>
+          <table className="data">
+            <thead>
+              <tr>
+                <th>기관</th><th>제목</th><th>국가</th><th>분야</th><th>마감</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <span className="badge" style={{ color: SRC_COLOR[r.source], borderColor: "transparent", background: "rgb(255 255 255 / .04)" }}>
+                      <span className="dot" /> {MDB_LABELS[r.source]}
+                    </span>
+                  </td>
+                  <td><a className="link" href={`/notices/${r.id}`} style={{ fontWeight: 550 }}>{r.title}</a></td>
+                  <td className="muted">{r.country ?? "-"}</td>
+                  <td className="muted">{r.ag_subsector ?? "-"}</td>
+                  <td style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{r.deadline_at?.slice(0, 10) ?? "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
-      <p style={{ color: "#9aa3b2", fontSize: 13 }}>{filtered.length}건</p>
+
+      {!loading && filtered.length > 0 && (
+        <p className="faint" style={{ fontSize: 13, marginTop: 12 }}>{filtered.length}건</p>
+      )}
     </div>
   );
 }
 
-const inputStyle: React.CSSProperties = { background: "#181b22", color: "#e7e9ee", border: "1px solid #272b35", borderRadius: 8, padding: "8px 12px" };
-const th: React.CSSProperties = { padding: "8px 10px" };
-const td: React.CSSProperties = { padding: "8px 10px" };
+function Skeleton() {
+  return (
+    <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+      <style>{`@media (prefers-reduced-motion:no-preference){.sk{animation:shimmer 1.3s ease-in-out infinite}}@keyframes shimmer{0%,100%{opacity:.5}50%{opacity:.85}}`}</style>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} style={{ display: "flex", gap: 16, padding: "14px 12px", borderBottom: i < 7 ? "1px solid var(--line-soft)" : "none" }}>
+          <Bar w={84} /><Bar w="40%" /><Bar w={70} /><Bar w={90} /><Bar w={74} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Bar({ w }: { w: number | string }) {
+  return <span className="sk" style={{ height: 12, width: w, borderRadius: 6, background: "var(--surface-hover)", display: "inline-block" }} />;
+}
+
+function Empty({ hasQuery }: { hasQuery: boolean }) {
+  return (
+    <div className="card" style={{ display: "grid", placeItems: "center", textAlign: "center", padding: "56px 20px", gap: 8 }}>
+      <div style={{ fontSize: 15, fontWeight: 600 }}>{hasQuery ? "검색 결과가 없습니다" : "표시할 공고가 없습니다"}</div>
+      <p className="muted" style={{ fontSize: 13, margin: 0 }}>
+        {hasQuery ? "검색어나 기관 필터를 바꿔보세요." : "수집 파이프라인 실행 후 공고가 채워집니다."}
+      </p>
+    </div>
+  );
+}

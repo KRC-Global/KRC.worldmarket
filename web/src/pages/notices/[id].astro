@@ -15,38 +15,44 @@ const s = n.summary ?? {};
 ---
 
 <Layout title={n.title}>
-  <p><a href="/notices">← 목록</a></p>
-  <div class="grid" style="grid-template-columns: 1fr 320px;">
+  <a class="back" href="/notices">← 공고 목록</a>
+  <div class="grid detail" style="grid-template-columns: minmax(0,1fr) 320px;">
     <div>
-      <span style="color:var(--accent)">{MDB_LABELS[n.source]}</span>
-      <h1>{n.title}</h1>
-      <div class="card" style="margin-bottom:16px">
+      <span class="badge"><span class="dot"></span>{MDB_LABELS[n.source]}</span>
+      <h1 style="margin-top:10px">{n.title}</h1>
+      <div class="card pad-lg" style="margin-bottom:16px">
         <h3>개요</h3>
-        <table>
+        <table style="width:100%;border-collapse:collapse">
           {Object.entries(s).map(([k, v]) => (
-            <tr><td style="color:var(--muted);padding:4px 12px 4px 0;vertical-align:top">{k}</td><td style="padding:4px 0">{v || "-"}</td></tr>
+            <tr style="border-top:1px solid var(--line-soft)">
+              <td class="muted" style="padding:9px 16px 9px 0;vertical-align:top;white-space:nowrap;font-size:.86rem">{k}</td>
+              <td style="padding:9px 0;font-size:.92rem">{v || "-"}</td>
+            </tr>
           ))}
         </table>
       </div>
-      <div class="card" style="margin-bottom:16px">
+      <div class="card pad-lg" style="margin-bottom:16px">
         <h3>첨부문서</h3>
         {attachments?.length ? (
-          <ul>{attachments.map((a: any) => <li><a href={a.source_url}>{a.filename ?? a.source_url}</a></li>)}</ul>
-        ) : <p style="color:var(--muted)">첨부 없음</p>}
+          <ul class="clean">{attachments.map((a: any) => (
+            <li><a class="row" href={a.source_url}><span>{a.filename ?? a.source_url}</span><span class="faint">↗</span></a></li>
+          ))}</ul>
+        ) : <p class="muted" style="margin:0">첨부 없음</p>}
       </div>
-      <div class="card">
+      <div class="card pad-lg">
         <h3>원문</h3>
-        <p style="white-space:pre-wrap;color:var(--muted)">{n.raw_text ?? "-"}</p>
-        <p><a href={n.source_url} target="_blank" rel="noopener">원문 보기 ↗</a></p>
+        <p class="muted" style="white-space:pre-wrap;max-height:340px;overflow:auto;margin:0 0 14px">{n.raw_text ?? "-"}</p>
+        <a class="btn btn-ghost" href={n.source_url} target="_blank" rel="noopener">원문 보기 ↗</a>
       </div>
     </div>
     <aside>
-      {n.hero_image_url && <img src={n.hero_image_url} alt="" style="width:100%;border-radius:12px;border:1px solid var(--line)" />}
-      <div class="card" style="margin-top:16px">
-        <div style="color:var(--muted)">국가</div><div>{n.country ?? "-"}</div>
-        <div style="color:var(--muted);margin-top:8px">마감</div><div>{n.deadline_at?.slice(0,10) ?? "-"}</div>
-        <div style="color:var(--muted);margin-top:8px">분야</div><div>{n.ag_subsector ?? "-"}</div>
+      {n.hero_image_url && <img src={n.hero_image_url} alt="" style="width:100%;border-radius:var(--radius);border:1px solid var(--line);margin-bottom:16px" />}
+      <div class="card pad-lg" style="display:grid;gap:14px;position:sticky;top:84px">
+        <div><div class="muted" style="font-size:.8rem">국가</div><div style="font-weight:600">{n.country ?? "-"}</div></div>
+        <div><div class="muted" style="font-size:.8rem">마감</div><div style="font-weight:600;font-variant-numeric:tabular-nums">{n.deadline_at?.slice(0,10) ?? "-"}</div></div>
+        <div><div class="muted" style="font-size:.8rem">분야</div><div style="font-weight:600">{n.ag_subsector ?? "-"}</div></div>
       </div>
     </aside>
   </div>
+  <style>@media (max-width:768px){.detail{grid-template-columns:1fr !important}}</style>
 </Layout>

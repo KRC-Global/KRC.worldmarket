@@ -4,6 +4,8 @@ import NoticeTable from "../../components/NoticeTable.tsx";
 ---
 
 <Layout title="공고 목록">
-  <h1>발주공고 목록</h1>
+  <span class="badge"><span class="dot"></span>전체 기관</span>
+  <h1 style="margin-top:10px">발주공고 목록</h1>
+  <p class="muted" style="margin-bottom:22px">제목·국가·분야로 검색하고 기관별로 필터링하세요.</p>
   <NoticeTable client:load />
 </Layout>
