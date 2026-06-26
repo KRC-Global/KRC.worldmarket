@@ -23,16 +23,24 @@ def collect_via_ungm(source_key: str, limit: int = 50, enrich: bool = True) -> l
     if not agency_id:
         return []
 
+    from datetime import datetime
+
     display = _DISPLAY.get(source_key, source_key.upper())
     raw_rows: list[dict] = []  # KRC 스타일 dict (정규화 전 — 보강 가능)
-    page = 1
-    while page <= _MAX_PAGES and len(raw_rows) < limit:
-        # UNGM 검색은 기관 필터를 `Agencies`(배열)로 받는다. 과거 `AgencyId`(단수)는
-        # 무시돼 전체 최신 공고가 반환됐다(ADB/AfDB 결과가 동일해지는 원인).
+    today = datetime.utcnow().strftime("%d-%b-%Y")
+    page = 0  # UNGM PageIndex 는 0-base
+    while page < _MAX_PAGES and len(raw_rows) < limit:
+        # UNGM 검색 — 기관 필터(Agencies 배열) + IsActive/DeadlineFrom 으로 '활성 공고'만.
+        # 단순 payload 는 마감 지난 옛 공고가 섞여 freshness/deadline 필터에 전부 탈락했음.
         payload = {
             "PageIndex": page, "PageSize": _PAGE_SIZE,
-            "SortField": "DatePublished", "SortOrder": "desc",
-            "UNSPSCCodes": "", "Agencies": [agency_id], "Keywords": "",
+            "Title": "", "Description": "", "Reference": "",
+            "PublishedFrom": "", "PublishedTo": "",
+            "DeadlineFrom": today, "DeadlineTo": "",
+            "Countries": [], "Agencies": [str(agency_id)], "UNSPSCs": [],
+            "NoticeTypes": [], "SortField": "Deadline", "SortAscending": True,
+            "isPicker": False, "IsSustainable": False, "IsActive": True,
+            "NoticeDisplayType": None, "TypeOfCompetitions": [],
         }
         try:
             r = req.post(
@@ -58,7 +66,12 @@ def collect_via_ungm(source_key: str, limit: int = 50, enrich: bool = True) -> l
             if len(cells) < 6:
                 continue
             notice_id = row.get("data-noticeid", "")
-            title = cells[1].get_text(strip=True) if len(cells) > 1 else ""
+            # 제목은 .ungm-title (실제 공고명). 셀 텍스트엔 tooltip/"Open in a new window" 가 섞임.
+            title_el = cells[1].select_one(".ungm-title") if len(cells) > 1 else None
+            title = (title_el.get_text(strip=True) if title_el
+                     else (cells[1].get_text(strip=True) if len(cells) > 1 else ""))
+            import re as _re
+            title = _re.sub(r"Open in a new window", "", title).strip()
             if not title or not notice_id:
                 continue
 

@@ -104,9 +104,28 @@ def _collect_nebid(req, limit: int) -> list[dict]:
 
     rows: list[dict] = []
     seen: set[str] = set()
+    # nebid 목록은 GET 시 빈 셸만 반환 — searchFrm 을 세션으로 POST 해야 표가 채워진다.
     try:
-        r = req.get(_NEBID_LIST, headers=C.browser_headers(referer="https://nebid.koica.go.kr/"),
-                    timeout=20, verify=False)
+        sess = req.Session()
+        g = sess.get(_NEBID_LIST, headers=C.browser_headers(referer="https://nebid.koica.go.kr/"),
+                     timeout=20, verify=False)
+        form = BeautifulSoup(g.text, "html.parser").select_one("#searchFrm")
+        data: dict = {}
+        if form:
+            for el in form.select("input,select"):
+                nm = el.get("name")
+                if not nm:
+                    continue
+                if el.name == "select":
+                    opt = el.select_one("option[selected]") or el.select_one("option")
+                    data[nm] = opt.get("value", "") if opt else ""
+                else:
+                    data[nm] = el.get("value", "")
+        data["P_PAGE_SIZE"] = str(max(30, limit))  # 한 페이지에 충분히
+        r = sess.post(_NEBID_LIST, data=data, timeout=25, verify=False,
+                      headers={**C.browser_headers(referer=_NEBID_LIST),
+                               "Content-Type": "application/x-www-form-urlencoded",
+                               "X-Requested-With": "XMLHttpRequest"})
         if r.status_code != 200:
             print(f"  [KOICA-nebid] HTTP {r.status_code}")
             return rows
@@ -116,6 +135,10 @@ def _collect_nebid(req, limit: int) -> list[dict]:
 
     soup = BeautifulSoup(r.text, "html.parser")
     tr_list = soup.select("tr.row[onclick]") or soup.select("tbody tr[onclick]")
+    if not tr_list:
+        print("  [KOICA-nebid] 목록 행 0 — nebid 가 JS 그리드로 렌더되어 requests 로는 표가 비어있음. "
+              "안정 수집은 KOICA_API_KEY(data.go.kr) 사용 권장.")
+        return rows
     print(f"  [KOICA-nebid] rows found: {len(tr_list)}")
 
     for tr in tr_list:
