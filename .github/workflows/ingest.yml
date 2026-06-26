@@ -1,0 +1,44 @@
+name: 발주공고 수집 (daily)
+
+# 매일 1회 클라우드 러너에서 수집 파이프라인 실행 → Supabase 적재.
+# 24/7 서버 불필요: GitHub가 스케줄 시각에 러너를 띄워 한 번 돌리고 종료.
+on:
+  schedule:
+    - cron: "0 0 * * *"      # 매일 00:00 UTC = 09:00 KST (정시 보장 X, 수 분~수십 분 지연 가능)
+  workflow_dispatch:          # Actions 탭에서 수동 실행 버튼
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 의존성 설치
+        run: pip install -r ingestion/requirements.txt
+
+      - name: 수집 실행 (전체 소스)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # 한국어 요약 — Groq(OpenAI 호환). 미설정 시 요약은 기본 폴백 개요로 채워짐.
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL || 'llama-3.3-70b-versatile' }}
+          # 선택 — 있으면 추가 수집/이미지. 없으면 자동 skip.
+          KOICA_API_KEY: ${{ secrets.KOICA_API_KEY }}
+          UNGM_API_KEY: ${{ secrets.UNGM_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        # 일러스트는 Groq 불가(이미지 모델 없음). OPENAI_API_KEY 넣고 --no-illustrate 제거 시 생성.
+        run: python -m ingestion.pipeline --source all --limit 50 --no-illustrate
