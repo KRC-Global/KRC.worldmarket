@@ -7,6 +7,7 @@ const SOURCES = Object.keys(MDB_LABELS) as MdbSource[];
 // 기관별 Slack 카테고리 색 (배지 좌측 점)
 const SRC_COLOR: Record<MdbSource, string> = {
   wb: "#36c5f0", adb: "#2eb67d", aiib: "#ecb22e", afdb: "#e01e5a",
+  isdb: "#2eb67d", ungm: "#36c5f0",
   koica: "#b07fca", edcf: "#1ab9ff", jica: "#cda4d6",
 };
 

@@ -73,6 +73,35 @@ def is_consulting_ko(text: str) -> bool:
     return any(kw in (text or "") for kw in CONSULTING_KEYWORDS_KO)
 
 
+# UNGM 직접 API 등 '추정 금액(숫자)' 필터용 최소 사업비
+MIN_VALUE_USD = 1_000_000
+
+
+def parse_value_usd(value_str: str) -> float:
+    """'$2.3M' / '2,300,000' / '2300000 USD' → float. 파싱 불가 시 0.0."""
+    if not value_str:
+        return 0.0
+    try:
+        s = (str(value_str).replace("$", "").replace(",", "")
+             .replace("USD", "").strip().upper())
+        if "M" in s:
+            return float(s.replace("M", "")) * 1_000_000
+        if "K" in s:
+            return float(s.replace("K", "")) * 1_000
+        if "B" in s:
+            return float(s.replace("B", "")) * 1_000_000_000
+        return float(s)
+    except Exception:
+        return 0.0
+
+
+def fmt_value(raw, currency: str = "USD") -> str:
+    """숫자/문자 금액 → 'USD 2.3M' 표시 문자열."""
+    if raw is None or raw == "":
+        return ""
+    return _format_compact_money(currency, str(raw), "")
+
+
 # ── 날짜 파싱 ────────────────────────────────────────────────────────────────
 _DATE_RX = re.compile(r"(\d{4})[-./\s년]\s*(\d{1,2})[-./\s월]\s*(\d{1,2})")
 
@@ -482,3 +511,145 @@ def to_normalized(d: dict) -> dict:
         raw_text=_build_raw_text(d),
         language="ko" if src in _KO_SOURCES else "en",
     )
+
+
+# ── 중복 판정용 지문(fingerprint) ────────────────────────────────────────────
+# (source, source_notice_id) unique 제약 위에, 서로 다른 기관/URL 로 들어온 같은
+# 사업을 배치 단계에서 한 번 더 걸러내기 위한 정규화 키.
+_TITLE_NORMALIZE_RX = re.compile(r"[\s\W_]+", re.UNICODE)
+_BRACKETED_RX = re.compile(r"[\[\(\{][^\]\)\}]*[\]\)\}]")
+_NOTICE_TYPE_TOKENS_RX = re.compile(
+    r"\b(?:request\s+for\s+(?:bids?|proposals?|expression\s+of\s+interest|"
+    r"expressions?\s+of\s+interest|quotations?|eoi)|rfp|rfb|rfq|reoi|"
+    r"general\s+procurement\s+notice|specific\s+procurement\s+notice|"
+    r"gpn|spn|eoi|pqn|pre[- ]?qualification|addend(?:um|a)|amendment|"
+    r"invitation\s+for\s+(?:bids?|tenders?)|ifb|ift|contract\s+award(?:\s+notice)?|"
+    r"procurement\s+plan|notices?)\b",
+    re.IGNORECASE,
+)
+
+
+def normalize_title(title: str) -> str:
+    """제목 정규화 — 대소문자/공백/특수문자/괄호내용/공고유형 표기 무시한 중복키."""
+    if not title:
+        return ""
+    t = title.lower()
+    t = _BRACKETED_RX.sub(" ", t)
+    t = _NOTICE_TYPE_TOKENS_RX.sub(" ", t)
+    t = _TITLE_NORMALIZE_RX.sub("", t)
+    return t[:120]
+
+
+def normalize_country_key(country: str) -> str:
+    if not country:
+        return ""
+    return _TITLE_NORMALIZE_RX.sub("", country.lower())[:50]
+
+
+def is_current_year_or_recent(url_or_text: str, max_years_back: int = 1) -> bool:
+    """URL/텍스트의 연도가 (현재연도 - max_years_back) 이상이면 True.
+    연도 표기가 없으면 보수적으로 True(통과)."""
+    threshold = datetime.utcnow().year - max_years_back
+    for ym in re.findall(r"\b(20\d{2})\b", url_or_text or ""):
+        if int(ym) >= threshold:
+            return True
+    return True
+
+
+# ── ADB / AfDB 상세 페이지 보강 ──────────────────────────────────────────────
+_DATE_PATTERNS = [
+    r"(\d{4}-\d{2}-\d{2})",
+    r"(\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4})",
+    r"((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4})",
+    r"(\d{1,2}/\d{1,2}/\d{4})",
+]
+_DEADLINE_LABELS = [
+    r"Submission\s+Deadline", r"Closing\s+Date", r"Deadline\s+(?:for\s+)?Submission",
+    r"Date\s+of\s+Deadline", r"Due\s+Date", r"Bid\s+Closing\s+Date",
+]
+_AMOUNT_LABELS = [
+    r"Estimated\s+(?:Cost|Value|Budget|Amount)", r"Contract\s+(?:Amount|Value|Price)",
+    r"Project\s+(?:Cost|Amount|Budget)", r"Total\s+(?:Cost|Value)",
+    r"Loan\s+Amount", r"Financing\s+Amount", r"Approved\s+Amount",
+]
+
+
+def _normalize_date_str(raw: str) -> str:
+    if not raw:
+        return ""
+    raw = raw.strip().replace(",", "")
+    for fmt in ("%Y-%m-%d", "%d %B %Y", "%d %b %Y", "%B %d %Y", "%b %d %Y",
+                "%d/%m/%Y", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(raw, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return raw[:10]
+
+
+def _extract_labeled_date(text: str, labels: list) -> str:
+    for label in labels:
+        for dp in _DATE_PATTERNS:
+            m = re.search(rf"{label}\s*[:\-–]\s*{dp}", text, re.IGNORECASE)
+            if m:
+                return _normalize_date_str(m.group(1))
+    return ""
+
+
+def _fetch_detail(source_url: str, referer: str) -> dict:
+    """ADB/AfDB 공고 상세 페이지에서 마감일·금액·국가·발주처·조달방식 추출.
+    403/타임아웃/파싱 실패 시 빈 dict (호출자가 graceful 처리)."""
+    if not source_url:
+        return {}
+    try:
+        import requests as req
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return {}
+    try:
+        r = req.get(source_url, timeout=12, headers=browser_headers(referer=referer))
+        if r.status_code != 200:
+            return {}
+    except Exception:
+        return {}
+
+    plain = BeautifulSoup(r.text, "html.parser").get_text(" ", strip=True)
+    details: dict = {}
+
+    deadline = _extract_labeled_date(plain, _DEADLINE_LABELS)
+    if deadline:
+        details["deadline"] = deadline
+
+    for label_rx in _AMOUNT_LABELS:
+        m = re.search(
+            rf"{label_rx}\s*[:\-–]?\s*({_CURRENCY_CODES})\s*([\d,]+(?:\.\d+)?)\s*"
+            rf"(million|billion|mln|bn|M|B|K)?",
+            plain, re.IGNORECASE,
+        )
+        if m:
+            val = _format_compact_money(m.group(1), m.group(2), m.group(3),
+                                        min_threshold=_MIN_CONTRACT_USD_THRESHOLD)
+            if val:
+                details["contract_value"] = val
+                break
+
+    cm = re.search(r"(?:Country|Pays|Location)\s*[:\-–]\s*([A-Z][A-Za-zÀ-ÿ ,\-]+)", plain)
+    if cm:
+        details["country"] = cm.group(1).strip().rstrip(".,")[:100]
+    ea = re.search(r"(?:Executing\s+Agency|Borrower|Employer|Client)\s*[:\-–]\s*([^\n<;]{3,200})", plain)
+    if ea:
+        details["client"] = ea.group(1).strip()[:200]
+    pm = re.search(r"(?:Procurement\s+Method|Selection\s+Method|Type\s+of\s+Contract)\s*[:\-–]\s*([^\n<;]+)", plain)
+    if pm:
+        details["procurement_method"] = pm.group(1).strip()[:200]
+    if plain:
+        details["text_excerpt"] = plain[:1200]
+    return details
+
+
+def fetch_adb_detail(source_url: str) -> dict:
+    return _fetch_detail(source_url, referer="https://www.adb.org/projects/tenders")
+
+
+def fetch_afdb_detail(source_url: str) -> dict:
+    return _fetch_detail(source_url, referer="https://www.afdb.org/en/")

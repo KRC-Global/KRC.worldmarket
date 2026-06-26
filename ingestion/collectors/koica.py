@@ -1,11 +1,14 @@
-"""KOICA 발주공고 — KOICA_API_KEY 있으면 data.go.kr OpenAPI 로 수집.
+"""KOICA 발주공고 — KOICA_API_KEY 있으면 data.go.kr OpenAPI, 없으면 nebid 스크래핑.
 
 KRC.worldmarket 의 _collect_koica 이식. 농업/컨설팅(용역) 키워드(영/한)로 필터.
-공개 포털(nebid) 폴백은 팝업/JS 렌더라 requests 로 불가 → 키 사용 권장.
+공개 포털 폴백은 nebid(전자조달) 목록 페이지를 requests 로 직접 파싱한다
+(과거 www.koica.go.kr 경로는 K2WebWizard 에러 페이지만 반환했으나,
+nebid.koica.go.kr/oep/bepb/beffatPblancList.do 는 정적 테이블을 반환함).
 """
 from __future__ import annotations
 
 import os
+import re
 
 from . import _mdb_common as C
 
@@ -76,14 +79,99 @@ def _collect_api(req, service_key: str, limit: int) -> list[dict]:
     return rows
 
 
-def _collect_nebid(req, limit: int) -> list[dict]:
-    """공개 포털(nebid.koica.go.kr) HTML 폴백.
+_NEBID_LIST = "https://nebid.koica.go.kr/oep/bepb/beffatPblancList.do"
+_NEBID_DETAIL = "https://nebid.koica.go.kr/oep/bepb/beffatPblancInfoDetailInqire.do?pblancNo={}"
 
-    현재 nebid 공고 목록은 다단계 팝업/AJAX(`pblancPopupInqire`)로 렌더돼 단순
-    requests 로는 개별 공고 행을 얻을 수 없다(초기 HTML 에는 카테고리 요약만 존재).
-    안정적 수집 경로는 data.go.kr OpenAPI 이므로 KOICA_API_KEY 사용을 권장한다.
-    헤드리스 브라우저(Playwright) 기반 스크래핑은 M2 단계 과제.
+
+def _collect_nebid(req, limit: int) -> list[dict]:
+    """nebid(전자조달) 공고 목록 HTML 스크래핑 — KOICA_API_KEY 미설정 시 폴백.
+
+    목록 행 onclick="beffatPblancInfoDetailInqire('W202600009');" 에서 공고번호를
+    뽑아 상세 URL 을 구성한다. 컬럼 구조:
+      [순번, 공고번호, 공고구분, 품목구분, 공고명, 공고기간, 조달팀, 공고일]
     """
-    print("  [KOICA] KOICA_API_KEY(data.go.kr) 미설정 — 공개 포털은 팝업/JS 렌더라 "
-          "requests 스크래핑 불가. 키 설정 시 OpenAPI 로 수집됩니다.")
-    return []
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        return []
+
+    # verify=False (nebid 인증서 체인 이슈 회피) — InsecureRequestWarning 억제
+    try:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    except Exception:  # noqa: BLE001
+        pass
+
+    rows: list[dict] = []
+    seen: set[str] = set()
+    try:
+        r = req.get(_NEBID_LIST, headers=C.browser_headers(referer="https://nebid.koica.go.kr/"),
+                    timeout=20, verify=False)
+        if r.status_code != 200:
+            print(f"  [KOICA-nebid] HTTP {r.status_code}")
+            return rows
+    except Exception as e:  # noqa: BLE001
+        print(f"  [KOICA-nebid] 요청 오류: {e}")
+        return rows
+
+    soup = BeautifulSoup(r.text, "html.parser")
+    tr_list = soup.select("tr.row[onclick]") or soup.select("tbody tr[onclick]")
+    print(f"  [KOICA-nebid] rows found: {len(tr_list)}")
+
+    for tr in tr_list:
+        m = re.search(r"beffatPblancInfoDetailInqire\('([^']+)'\)", tr.get("onclick", ""))
+        if not m:
+            continue
+        bid_no = m.group(1)
+        detail_url = _NEBID_DETAIL.format(bid_no)
+        if detail_url in seen:
+            continue
+        seen.add(detail_url)
+
+        cols = [c.get_text(" ", strip=True) for c in tr.select("td")]
+        if len(cols) < 6:
+            continue
+        bid_kind = cols[2]    # 국내입찰 / 국제입찰
+        item_kind = cols[3]   # 용역 / 물품 / 공사
+        title_td = tr.select_one("td.left_T, td[title]")
+        title = (title_td.get("title") if title_td and title_td.get("title")
+                 else (cols[4] if len(cols) > 4 else ""))
+        if not title:
+            continue
+
+        period = cols[5] if len(cols) > 5 else ""
+        deadline_match = re.findall(r"\d{4}-\d{2}-\d{2}", period)
+        deadline = deadline_match[-1] if deadline_match else ""
+        if C.is_deadline_passed(deadline):
+            continue
+        posted = cols[-1] if cols else ""
+        if C.is_stale_date(posted, days=C.DEFAULT_FRESHNESS_DAYS):
+            continue
+
+        combined = f"{title} {bid_kind} {item_kind}"
+        agri = C.is_agri(combined) or C.is_agri_ko(combined)
+        cons = (C.is_consulting(combined) or C.is_consulting_ko(combined)
+                or item_kind == "용역")
+        if not agri and not cons:
+            continue
+
+        rows.append(C.to_normalized({
+            "source": "koica",
+            "source_id": bid_no,
+            "title": C.decorate_title(title, bid_kind or item_kind),
+            "country": "",
+            "client": "KOICA",
+            "sector": "agriculture" if agri else "consulting",
+            "notice_type": bid_kind or item_kind,
+            "contract_value": "",
+            "deadline": deadline,
+            "posted_date": posted[:10] if posted else None,
+            "source_url": detail_url,
+            "raw_data": {"bid_no": bid_no, "title": title, "bid_kind": bid_kind,
+                         "item_kind": item_kind, "period": period, "posted": posted},
+        }))
+        if len(rows) >= limit:
+            break
+
+    print(f"  [KOICA-nebid] {len(rows)}건 수집")
+    return rows

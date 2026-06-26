@@ -8,6 +8,10 @@ do $$ begin
   create type mdb_source as enum ('wb','adb','aiib','afdb','koica','edcf','jica');
 exception when duplicate_object then null; end $$;
 
+-- 신규 소스 추가(IsDB / UNGM 직접 API: IFAD·FAO·WFP 등). 기존 타입에도 idempotent 하게 보강.
+alter type mdb_source add value if not exists 'isdb';
+alter type mdb_source add value if not exists 'ungm';
+
 -- ─────────────────────────────────────────────
 -- notices : 핵심 공고 테이블
 -- ─────────────────────────────────────────────
@@ -33,16 +37,23 @@ create table if not exists public.notices (
   summary            jsonb,                    -- 한국어 구조화 개요(사업명/발주처/규모/마감/자격/핵심요약)
   hero_image_url     text,                     -- gpt-image 일러스트 URL
   content_hash       text,                     -- 본문 해시(보조 중복판정)
+  archived_at        timestamptz,              -- 아카이브 시각(소스에서 사라짐/마감/노후). NULL = 활성
+  archive_reason     text,                     -- source_removed / deadline_passed / aged_out
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now(),
   unique (source, source_notice_id)
 );
+
+-- 기존 배포 DB 에도 idempotent 하게 컬럼 보강
+alter table public.notices add column if not exists archived_at    timestamptz;
+alter table public.notices add column if not exists archive_reason text;
 
 create index if not exists idx_notices_source       on public.notices (source);
 create index if not exists idx_notices_country_iso  on public.notices (country_iso);
 create index if not exists idx_notices_deadline      on public.notices (deadline_at);
 create index if not exists idx_notices_published      on public.notices (published_at desc);
 create index if not exists idx_notices_ag_subsector  on public.notices (ag_subsector);
+create index if not exists idx_notices_archived      on public.notices (archived_at);
 
 -- updated_at 자동 갱신
 create or replace function public.set_updated_at() returns trigger as $$
@@ -85,25 +96,26 @@ create table if not exists public.ingestion_runs (
 -- ─────────────────────────────────────────────
 -- 대시보드 집계 뷰
 -- ─────────────────────────────────────────────
+-- 집계 뷰는 활성(archived_at is null) 공고만 집계
 create or replace view public.v_stats_by_mdb as
   select source, count(*) as notice_count,
          count(*) filter (where deadline_at >= now()) as open_count,
          sum(budget_amount) as total_budget
-  from public.notices group by source;
+  from public.notices where archived_at is null group by source;
 
 create or replace view public.v_stats_by_country as
   select country_iso, country, count(*) as notice_count,
          sum(budget_amount) as total_budget
-  from public.notices where country_iso is not null
+  from public.notices where country_iso is not null and archived_at is null
   group by country_iso, country;
 
 create or replace view public.v_stats_by_sector as
   select coalesce(ag_subsector,'기타') as ag_subsector, count(*) as notice_count
-  from public.notices group by coalesce(ag_subsector,'기타');
+  from public.notices where archived_at is null group by coalesce(ag_subsector,'기타');
 
 create or replace view public.v_timeline as
   select date_trunc('month', published_at) as month, source, count(*) as notice_count
-  from public.notices where published_at is not null
+  from public.notices where published_at is not null and archived_at is null
   group by date_trunc('month', published_at), source;
 
 -- ─────────────────────────────────────────────

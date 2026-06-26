@@ -2,13 +2,15 @@
 
 각 모듈은 collect(limit) -> list[dict] 를 구현.
 """
-from . import adb, afdb, aiib, edcf, jica, koica, worldbank
+from . import adb, afdb, aiib, edcf, isdb, jica, koica, ungm, worldbank
 
 REGISTRY = {
     "wb": worldbank.collect,
     "adb": adb.collect,
     "afdb": afdb.collect,
     "aiib": aiib.collect,
+    "isdb": isdb.collect,
+    "ungm": ungm.collect,
     "koica": koica.collect,
     "edcf": edcf.collect,
     "jica": jica.collect,

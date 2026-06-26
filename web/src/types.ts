@@ -1,10 +1,13 @@
-export type MdbSource = "wb" | "adb" | "aiib" | "afdb" | "koica" | "edcf" | "jica";
+export type MdbSource =
+  | "wb" | "adb" | "aiib" | "afdb" | "isdb" | "ungm" | "koica" | "edcf" | "jica";
 
 export const MDB_LABELS: Record<MdbSource, string> = {
   wb: "World Bank",
   adb: "ADB",
   aiib: "AIIB",
   afdb: "AfDB",
+  isdb: "IsDB",
+  ungm: "UNGM",
   koica: "KOICA",
   edcf: "EDCF",
   jica: "JICA",

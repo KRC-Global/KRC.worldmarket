@@ -12,9 +12,10 @@ _DISPLAY = {"adb": "ADB", "afdb": "AfDB"}
 _SEARCH_URL = "https://www.ungm.org/Public/Notice/Search"
 _MAX_PAGES = 3
 _PAGE_SIZE = 15
+_ENRICH_BUDGET = 10  # 상세 페이지 fetch 상한 (마감/금액 보강)
 
 
-def collect_via_ungm(source_key: str, limit: int = 50) -> list[dict]:
+def collect_via_ungm(source_key: str, limit: int = 50, enrich: bool = True) -> list[dict]:
     import requests as req
     from bs4 import BeautifulSoup
 
@@ -23,9 +24,9 @@ def collect_via_ungm(source_key: str, limit: int = 50) -> list[dict]:
         return []
 
     display = _DISPLAY.get(source_key, source_key.upper())
-    rows: list[dict] = []
+    raw_rows: list[dict] = []  # KRC 스타일 dict (정규화 전 — 보강 가능)
     page = 1
-    while page <= _MAX_PAGES and len(rows) < limit:
+    while page <= _MAX_PAGES and len(raw_rows) < limit:
         # UNGM 검색은 기관 필터를 `Agencies`(배열)로 받는다. 과거 `AgencyId`(단수)는
         # 무시돼 전체 최신 공고가 반환됐다(ADB/AfDB 결과가 동일해지는 원인).
         payload = {
@@ -79,7 +80,7 @@ def collect_via_ungm(source_key: str, limit: int = 50) -> list[dict]:
             if not C.is_agri(combined) and not C.is_consulting(combined):
                 continue
 
-            rows.append(C.to_normalized({
+            raw_rows.append({
                 "source": source_key,
                 "source_id": notice_id,
                 "title": C.decorate_title(title, notice_type),
@@ -94,13 +95,39 @@ def collect_via_ungm(source_key: str, limit: int = 50) -> list[dict]:
                 "source_url": f"https://www.ungm.org/Public/Notice/{notice_id}",
                 "raw_data": {"ungm_id": notice_id, "title": title,
                              "notice_type": notice_type, "posted": posted_raw, "agency": agency},
-            }))
-            if len(rows) >= limit:
+            })
+            if len(raw_rows) >= limit:
                 break
 
         if len(table_rows) < _PAGE_SIZE:
             break
         page += 1
+
+    # ── 상세 보강 — 마감일/금액이 비는 행을 공고 상세 페이지에서 후채움 ──
+    # (목록 단계는 마감·금액이 종종 비어있음. 예산 내에서만 fetch.)
+    fetch_detail = C.fetch_adb_detail if source_key == "adb" else C.fetch_afdb_detail
+    rows: list[dict] = []
+    budget = _ENRICH_BUDGET if enrich else 0
+    import time
+    for d in raw_rows:
+        if budget > 0 and (not d.get("deadline") or not d.get("contract_value")):
+            budget -= 1
+            det = fetch_detail(d["source_url"])
+            if det:
+                if not d.get("contract_value") and det.get("contract_value"):
+                    d["contract_value"] = det["contract_value"]
+                if not d.get("deadline") and det.get("deadline"):
+                    d["deadline"] = det["deadline"]
+                if not d.get("procurement_method") and det.get("procurement_method"):
+                    d["procurement_method"] = det["procurement_method"]
+                if (not d.get("country")) and det.get("country"):
+                    d["country"] = det["country"]
+                if det.get("text_excerpt"):
+                    d["raw_data"]["text_excerpt"] = det["text_excerpt"]
+            if C.is_deadline_passed(d.get("deadline", "")):
+                continue
+            time.sleep(0.4)  # rate-limit 보호
+        rows.append(C.to_normalized(d))
 
     print(f"  [{source_key}-UNGM] {len(rows)}건 수집")
     return rows
